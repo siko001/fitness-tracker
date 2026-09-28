@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <!-- Allows a user-installed local CA for optional home Wi-Fi HTTPS sync. -->
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Only for the documented adb reverse USB sync workflow. -->
+        <domain>localhost</domain>
+        <domain>127.0.0.1</domain>
+    </domain-config>
+</network-security-config>

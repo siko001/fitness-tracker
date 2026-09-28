@@ -1,0 +1,23 @@
+{
+  "appId": "com.neil.steady",
+  "appName": "Steady",
+  "webDir": "dist",
+  "backgroundColor": "#f5f6f2",
+  "ios": {
+    "packageManager": "SPM"
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_steady",
+      "iconColor": "#214d3b",
+      "presentationOptions": [
+        "sound",
+        "banner",
+        "list"
+      ]
+    }
+  }
+}

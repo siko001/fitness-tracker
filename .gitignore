@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.DS_Store
+.steady-data/
+.vercel/
+*.pem
+*.local
+test-results/
+playwright-report/
+android/.gradle/
+android/local.properties
+android/**/build/
+ios/App/Pods/
+ios/App/App/public/
+ios/App/DerivedData/
+*.tsbuildinfo
