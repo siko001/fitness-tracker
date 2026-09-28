@@ -67,7 +67,7 @@ The development server is for editing the interface. Use a production build for 
 3. [Install the native Android app](docs/deployment.md#3-install-on-your-nothing-phone-3a).
 4. [Connect Zepp and set up reminders](docs/deployment.md#4-connect-the-watch-when-you-have-it).
 
-There is no live deployment included yet. Supabase credentials, your personal auth user and your Vercel deployment must be created in your accounts. Native Android/iOS projects are prepared, but have not been compiled or tested on a physical device in this workspace.
+Hosted sync requires your own Supabase project, personal auth user and Vercel deployment; no account credentials are committed to this repository. The Android debug APK was successfully built in this workspace with JDK 21 on 28 September 2026. Physical-device health imports and reminders still need verification. The iOS project is prepared but has not been compiled or tested here.
 
 ## Data and privacy
 

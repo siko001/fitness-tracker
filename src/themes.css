@@ -1,0 +1,51 @@
+.appearance-card { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-bottom: 24px; }
+.appearance-card .section-heading { margin-bottom: 10px; }
+.appearance-card p, .appearance-card .field { margin-bottom: 0; }
+@media (max-width: 680px) { .appearance-card { grid-template-columns: 1fr; gap: 14px; } }
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  color: #e3ece2;
+  background: #101a14;
+  --ink: #e3ece2;
+  --muted: #afbcaa;
+  --line: #344537;
+  --cream: #101a14;
+  --surface: #1b2920;
+  --surface-soft: #243529;
+  --accent-text: #c3dda9;
+}
+
+:root[data-theme="dark"] :is(.sidebar, .topbar, .mobile-nav) { background: #142019f5; border-color: var(--line); }
+:root[data-theme="dark"] :is(.card, .modal, .date-switcher, .search-box, .library-tools select, .button.secondary) { background: var(--surface); border-color: var(--line); color: var(--ink); }
+:root[data-theme="dark"] :is(.brand, .breadcrumb strong, .macro-numbers strong, .chart-summary strong, .card-foot b, .empty h3, .gentle-card h3) { color: var(--ink); }
+:root[data-theme="dark"] :is(a, .text-button, .source-link, .privacy-note a, .callout strong, .recipe-total, .gentle-card .text-button, .update-banner button) { color: var(--accent-text); }
+:root[data-theme="dark"] :is(.muted, .eyebrow, .nav-label, .breadcrumb, .save-status, .sidebar-profile small, .sidebar-message p, .sidebar-message > svg, .page-heading p:not(.eyebrow), .field > label, .field small, .page-note, .chart-caption, .library-caption, .macro-strip, .macro-strip small, .food-card > p, .diary-entry small, .add-meal, .meal-header > span:not(.meal-icon), .meal-header small, .diary-note, .movement-card p, .movement-card small, .movement-card strong span, .page-footer, .card-foot, .macro-numbers > div, .macro-numbers strong small, .chart-summary strong span, .chart-summary small, .chart-grid, .chart-column span, .gentle-card p, .stats-row .card p, .stats-row .card strong small, .stats-row .card > span, .chart-endpoints, .weight-chart > span, .food-calories span, .recipe-content > p, .recipe-kcal small, .recipe-tip p, .empty p, .connection-card p, .sync-controls > p, .connection-explainer, .connection-explainer p, .privacy-note, .modal-header p, .food-option small, .selected-food p, .nutrition-preview span, .ingredient small, .ingredient > span:nth-child(2), .loading-screen p, .meal-skip) { color: var(--muted); }
+:root[data-theme="dark"] :is(.sidebar nav button, .settings-nav, .mobile-nav button, .icon-button, .segmented button) { color: #b0bfaa; }
+:root[data-theme="dark"] :is(.sidebar nav button.active, .settings-nav.active, .segmented button.selected) { background: #304731; color: #ddedcb; }
+:root[data-theme="dark"] :is(.mobile-nav button.active, .chart-column.current span) { color: #d6ed9f; }
+:root[data-theme="dark"] :is(.sidebar nav button:hover, .settings-nav:hover, .icon-button:hover, .button.secondary:hover, .food-option:hover) { background: #2c4031; color: var(--ink); }
+:root[data-theme="dark"] :is(.field input, .field select) { background: #142019; color: var(--ink); border-color: #435642; }
+:root[data-theme="dark"] .search-box input { color: var(--ink); }
+:root[data-theme="dark"] input::placeholder { color: #a0ae99; }
+:root[data-theme="dark"] :is(.tag, .sidebar-message, .gentle-card, .diary-note, .recipe-tip, .segmented, .callout, .selected-food, .nutrition-preview, .sync-path > span, th, .recipe-art, .recipe-art span) { background: var(--surface-soft); border-color: var(--line); color: var(--muted); }
+:root[data-theme="dark"] :is(.meal, .conflict-item) { border-color: var(--line); }
+:root[data-theme="dark"] :is(.meal-icon, .meal-icon.snacks, .metric-icon.peach, .food-category.protein, .food-category.fruit) { background: #453729; color: #e6c69a; }
+:root[data-theme="dark"] :is(.meal-icon.lunch, .metric-icon, .food-category, .gentle-icon, .empty-symbol, .food-icon, .connection-icon, .round-add, .add-ingredient) { background: #304430; color: #c7daa7; }
+:root[data-theme="dark"] :is(.meal-icon.dinner, .metric-icon.lavender, .food-category.dairy) { background: #393343; color: #d2bddf; }
+:root[data-theme="dark"] :is(.avatar, .avatar-button) { background: #453b30; color: #ead5b9; }
+:root[data-theme="dark"] :is(.sync-path, .recipe-art, .food-option > svg) { color: var(--accent-text); }
+:root[data-theme="dark"] :is(.settings-message, .update-banner) { background: #2c4029; color: #d0e5b7; }
+:root[data-theme="dark"] .form-error { background: #452b24; border-color: #754b3e; color: #f3bd9f; }
+:root[data-theme="dark"] :is(.text-button.danger, .danger, .delete:hover) { color: #ffb2a4; }
+:root[data-theme="dark"] .save-status.offline { color: #e1c28f; }
+:root[data-theme="dark"] .modal::backdrop { background: #050d09a8; }
+:root[data-theme="dark"] .chart-bars { background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 48px, #344537 49px, #344537 50px); }
+:root[data-theme="dark"] .long-chart { background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 54px, #344537 55px, #344537 56px); }
+:root[data-theme="dark"] :is(.bar, .history-bar > div) { background: #486143; }
+:root[data-theme="dark"] .bar.no-data { background: #344537; }
+:root[data-theme="dark"] :is(.current .bar:not(.no-data), .history-bar > .has-data) { background: #adc88d; }
+:root[data-theme="dark"] .weight-chart path { stroke: #344537; }
+:root[data-theme="dark"] .weight-chart polyline { stroke: #b6d495; }
+:root[data-theme="dark"] .weight-chart circle { fill: #b6d495; }
+:root[data-theme="dark"] :is(input:focus, select:focus, button:focus-visible, a:focus-visible) { outline-color: #c3dda9; }

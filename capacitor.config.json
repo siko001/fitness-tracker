@@ -7,6 +7,11 @@
     "packageManager": "SPM"
   },
   "plugins": {
+    "SystemBars": {
+      "insetsHandling": "css",
+      "initialViewportFitValueHint": "cover",
+      "style": "DEFAULT"
+    },
     "CapacitorHttp": {
       "enabled": true
     },

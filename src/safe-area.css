@@ -1,0 +1,55 @@
+/* Capacitor reports the remaining insets after any native WebView padding.
+   Browser/iOS installs use env(); zero insets keep the desktop layout intact. */
+:root {
+  --app-safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --app-safe-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --app-safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --app-safe-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+  --app-toolbar-height: 83px;
+  --app-sidebar-width: var(--sidebar);
+}
+
+.topbar {
+  height: calc(var(--app-toolbar-height) + var(--app-safe-top));
+  padding-top: var(--app-safe-top);
+}
+
+.sidebar {
+  top: var(--app-safe-top);
+  bottom: var(--app-safe-bottom);
+  left: var(--app-safe-left);
+}
+
+.main-shell {
+  margin-left: calc(var(--app-sidebar-width) + var(--app-safe-left));
+  padding-right: var(--app-safe-right);
+}
+
+.main-content { padding-bottom: var(--app-safe-bottom); }
+.toast { bottom: calc(24px + var(--app-safe-bottom)); }
+
+.modal {
+  top: var(--app-safe-top);
+  right: var(--app-safe-right);
+  bottom: var(--app-safe-bottom);
+  left: var(--app-safe-left);
+  margin: auto;
+  width: min(580px, calc(100% - 30px - var(--app-safe-left) - var(--app-safe-right)));
+  max-height: min(90dvh, calc(100dvh - var(--app-safe-top) - var(--app-safe-bottom) - 20px));
+}
+
+@media (max-width: 900px) {
+  :root { --app-sidebar-width: 75px; }
+}
+
+@media (max-width: 680px) {
+  :root { --app-toolbar-height: 71px; --app-sidebar-width: 0px; }
+  .mobile-nav {
+    left: var(--app-safe-left);
+    right: var(--app-safe-right);
+    padding-bottom: calc(12px + var(--app-safe-bottom));
+  }
+  .main-content { padding-bottom: calc(85px + var(--app-safe-bottom)); }
+  .toast { bottom: calc(85px + var(--app-safe-bottom)); }
+  .modal { width: calc(100% - 20px - var(--app-safe-left) - var(--app-safe-right)); }
+}

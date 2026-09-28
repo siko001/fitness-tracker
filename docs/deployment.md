@@ -86,7 +86,7 @@ You can first test food logging by visiting the Vercel URL in Chrome and choosin
 
 ### Build the native app once
 
-1. Install Node.js **24+** and [Android Studio](https://developer.android.com/studio). Let its setup install the Android SDK, Platform Tools and Android 36 SDK. Use the JDK supported by Capacitor 8 (JDK 21; Android Studio’s suitable bundled JDK is convenient).
+1. Install Node.js **24+** and [Android Studio](https://developer.android.com/studio). Let its setup install the Android SDK and Platform Tools; this project also needs Android SDK Platform 36, which you can install from SDK Manager if the wizard only installed a newer platform. Use **JDK 21** for this project's Gradle JVM. If Android Studio reports that its bundled JVM 25 is incompatible with Gradle 8.14.3, click **Use JVM 21** and allow the download. Otherwise select/download JDK 21 under **Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle JDK**.
 2. In the project folder, create `.env.local` by copying `.env.example`. Enter the same public Supabase URL/key as Vercel. Never add the user password or a secret/service-role key. This file is ignored by Git.
 3. Run:
 
@@ -102,9 +102,13 @@ You can first test food logging by visiting the Vercel URL in Chrome and choosin
 7. Alternatively, build a debug APK through Android Studio’s **Build APK(s)** action. The typical output is `android/app/build/outputs/apk/debug/app-debug.apk`. Transfer/install it on your own phone and allow that installer when Android prompts. Do not publish a debug APK.
 8. In Steady, select **Settings & sync → Hosted sync**, sign in with the same personal user, and wait for the first successful sync. Set your profile/goals if desired. Nothing is entered into your public build by default.
 
+If USB does not detect the phone, use Android Studio's device selector → **Pair Devices Using Wi-Fi**. Connect the phone and Mac to the same Wi-Fi network, enable **Developer options → Wireless debugging** on the phone, and follow the pairing-code or QR-code prompts. Once the phone appears as a connected device, select it and click **Run ▶** as above. This connection is only for installing/debugging; normal hosted diary sync still uses Supabase. See [Android's device connection guide](https://developer.android.com/studio/run/device).
+
 For this personal install you do not need to publish on Google Play. If publishing later, Health Connect declarations, a privacy policy and release signing will be required. An APK update using the same application ID and signing key retains local data; uninstalling can remove it, so export first.
 
-Native projects and permissions are included. They have not been compiled on this workspace because the JDK, Android SDK and full Xcode were unavailable. Follow the device checks below before relying on imports or reminders. See [Capacitor environment setup](https://capacitorjs.com/docs/getting-started/environment-setup).
+In **Settings & sync → Appearance → Colour theme**, choose **System (default)**, **Light** or **Dark**. System follows the device's appearance, including changes while Steady is open. An override is saved on that device and works offline. The website and phone can each follow their own system theme. Android's status/navigation icon contrast follows the selected app theme; the layout reserves the space reported by the device's system bars and screen cutouts.
+
+The Android debug APK was successfully compiled in this workspace on 28 September 2026 with JDK 21 and Gradle 8.14.3, including the native health and meal-reminder plugins. It was installed and launched on the Nothing A059 over Wi-Fi; Android reported a successful launch, and the app process remained running with no startup errors in the checked AndroidRuntime/Capacitor console logs. Health imports and reminder delivery still need the device checks below. The iOS project has not been compiled here; full Xcode is required. See [Capacitor environment setup](https://capacitorjs.com/docs/getting-started/environment-setup).
 
 ### Future iPhone installation
 
@@ -145,7 +149,7 @@ After the first notification, Steady requests another every **20 minutes** until
 
 A meal counts as logged once it has any food entry. Daily-check-in mode stops after any food entry or a skip for that day. A saved recipe alone is not a food entry; log a portion. Reminders prompt you to record what you ate, not to eat when you are not hungry or meet a calorie target.
 
-**Android:** a native rolling alarm calculates each next check using local time. It works offline with the app closed, and is rescheduled after boot, timezone/clock changes and app updates. A skipped-meal action is saved by the phone immediately and merged into the shared diary on next app use. No Firebase, notification server or notification subscription is needed. Native Java code is included but compilation/device behaviour has not yet been verified in this workspace.
+**Android:** a native rolling alarm calculates each next check using local time. It is designed to work offline with the app closed, and is rescheduled after boot, timezone/clock changes and app updates. A skipped-meal action is saved by the phone immediately and merged into the shared diary on next app use. No Firebase, notification server or notification subscription is needed. Native Java compilation was verified on 28 September 2026; physical-device behaviour still needs verification.
 
 **iPhone:** the OS permits a limited number of pending notifications. Steady schedules the next **60 checks**, coalescing meals due at the same moment. Actions refer to the first listed meal; use the diary for the others. iPhone Skip actions bring Steady forward to save the choice. The queue is replenished when you open/resume or log/skip; if you ignore all reminders without opening the app, it eventually runs out (around a day or two with these repeat times). This limitation does not apply to Android’s rolling scheduler. Reopen after timezone changes.
 
@@ -230,7 +234,7 @@ Export from Settings regularly. To back up the server files, stop it and copy `.
 ## Update the app
 
 - **Website:** push changes to the linked branch or run `npx vercel --prod`. Existing users see an update banner. Click **Update app** after saving any open form.
-- **Native phone:** run `npm run native:sync`, rebuild in Android Studio/Xcode and reinstall with the same identity/signing key. Vercel deployments do not replace the assets bundled inside an installed native app.
+- **Native phone:** increment Android's `versionCode` and `versionName` in `android/app/build.gradle`, run `npm run native:sync`, rebuild in Android Studio/Xcode and reinstall with the same identity/signing key. A paired Android phone can receive the build over Wi-Fi while Wireless debugging is enabled and both devices are on the same network; USB is optional. Vercel deployments do not replace the assets bundled inside an installed native app.
 - **Local server:** `npm run local:stop`, `npm run build`, `npm run local:start`. Use the HTTPS environment variables again if applicable.
 - After dependency changes, run `npm ci` (or the development install command), tests, build and native sync. Environment changes need a new website/native build.
 
