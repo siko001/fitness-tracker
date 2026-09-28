@@ -7,7 +7,7 @@ A personal food and fitness diary for desktop, Android and iPhone. Food logging,
 ## What is ready
 
 - Log foods by grams; calculate calories, protein, carbohydrate, fat and fibre.
-- An offline library of 24 USDA reference foods, with separate raw/cooked entries and source links. Add your own foods from package labels.
+- An offline library of 24 USDA reference foods, with separate raw/cooked entries and source links. Add your own foods from package labels. Compact rows show 10, 20 or 50 foods at a time; search covers the whole library, including offline. Recipes, food logging and ingredient selection also have bounded result pages.
 - Build recipes from ingredients, specify the finished dish weight and number of servings, then log grams or portions. Past diary entries retain their original nutrition when a recipe changes.
 - Daily diary, calorie/macro totals, weight tracking and 7/30/90/365-day progress views.
 - Native phone integration reads steps, active energy and walking/running distance from Health Connect / Apple Health. Connect once; checks run on opening, returning to the app and every five minutes while open.

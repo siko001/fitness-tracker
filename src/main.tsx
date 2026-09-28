@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import './styles.css';
 import './safe-area.css';
+import './interface.css';
 import './themes.css';
 import { applyAppearance, readAppearance } from './appearance';
 

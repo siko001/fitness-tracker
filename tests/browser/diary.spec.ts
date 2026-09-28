@@ -56,7 +56,7 @@ test('log and edit food offline; recipes, backups and mobile layout', async ({ p
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.screenshot({ path: 'test-results/dashboard-mobile.png', fullPage: true });
   await page.getByRole('button', { name: 'Foods', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Your food library.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Food library', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   expect(errors).toEqual([]);
 });

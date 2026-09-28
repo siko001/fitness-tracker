@@ -121,7 +121,7 @@ You do not need the watch to use food logging, recipes, weight, notifications or
 1. Install **Zepp** from the official app store, sign in and pair the Amazfit watch. Grant the Bluetooth/nearby-device permissions required by Zepp.
 2. Enter your physical profile correctly in Zepp so its activity estimates use your details. Keep Bluetooth on when you want data to transfer.
 3. In Zepp, find **third-party account/data sharing → Health Connect** and enable writing steps, distance and active energy where available. Menu names and supported fields can vary by Zepp version. Confirm Zepp appears with write access in Android’s Health Connect settings.
-4. In the installed Steady app, open **Activity → Connect health & enable auto-checks**. Grant **read** access for steps, distance and active calories. Steady requests no write access.
+4. In the installed Steady app, open **Activity → Connect health**. Grant **read** access for steps, distance and active calories. Steady requests no write access.
 5. Once enabled, Steady checks on opening/returning to the app, then every five minutes while open. **Check activity now** is only an optional troubleshooting button. The Activity page shows the last import and any problems. Turn automatic checks off there if you want.
 6. Review Zepp’s **App Background Permissions Settings** and your Nothing phone’s per-app battery settings if Bluetooth transfer stops in the background. Do not force-stop Zepp. Allow its background activity as appropriate. Steady still cannot make Zepp export on a guaranteed schedule.
 
@@ -133,7 +133,7 @@ Official sources: [Amazfit Bip Max](https://uk.amazfit.com/products/bip-max), [Z
 
 ## 5. Enable food reminders once
 
-On the **installed phone app**, open **Settings & sync → A gentle nudge**:
+On the **installed phone app**, open **Settings → Meal reminders**:
 
 1. Turn on **Remind me to log food**.
 2. Keep **After each meal** for **10:00 breakfast, 14:00 lunch, 21:00 dinner**. You can edit these times or choose one daily check-in.

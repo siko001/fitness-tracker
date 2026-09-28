@@ -17,7 +17,7 @@ export function applyAppearance(preference: AppearancePreference) {
   const dark = preference === 'dark' || preference === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches;
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#142019' : '#fafbf7');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#1c1f22' : '#fafbf7');
   if (Capacitor.isNativePlatform()) {
     // Capacitor's Dark style means light icons over a dark background.
     void SystemBars.setStyle({ style: dark ? SystemBarsStyle.Dark : SystemBarsStyle.Light })
