@@ -13,7 +13,7 @@ The local server is an optional alternative. Choose one sync mode on each device
 | Log food offline | Saves locally. Uploads when connection returns while open, or when you next open the app. |
 | Close the desktop tab or phone app | Food remains saved. This version does not run diary sync while closed. |
 | Watch reconnects to phone | Zepp controls Bluetooth transfer and publishing into Health Connect. Steady cannot force this. |
-| Open/return to the connected native Steady app | Reads seven days of health totals automatically; repeats every five minutes while open. Then diary sync shares the results. |
+| Open/return to the connected native Steady app | Reads seven days of health totals automatically; rechecks today and yesterday every 30 seconds while open. Diary sync shares the results. |
 | Food reminder is due | Android shows the meal notification and plans the next check about 20 minutes later, even offline/with Steady closed. Battery-saving rules can delay delivery. |
 | Tap Skip today | Android silences that meal for that date immediately without opening Steady. The skip joins your synced diary on next app use. Other meals and tomorrow remain active. |
 | Log food on desktop | Cancels a corresponding phone reminder after the entry reaches the phone. A closed/offline phone may still remind you. |
@@ -122,7 +122,7 @@ You do not need the watch to use food logging, recipes, weight, notifications or
 2. Enter your physical profile correctly in Zepp so its activity estimates use your details. Keep Bluetooth on when you want data to transfer.
 3. In Zepp, find **third-party account/data sharing → Health Connect** and enable writing steps, distance and active energy where available. Menu names and supported fields can vary by Zepp version. Confirm Zepp appears with write access in Android’s Health Connect settings.
 4. In the installed Steady app, open **Activity → Connect health**. Grant **read** access for steps, distance and active calories. Steady requests no write access.
-5. Once enabled, Steady checks on opening/returning to the app, then every five minutes while open. **Check activity now** is only an optional troubleshooting button. The Activity page shows the last import and any problems. Turn automatic checks off there if you want.
+5. Once enabled, Steady checks seven days on opening/returning to the app, then today and yesterday every 30 seconds while open. **Check activity now** is only an optional troubleshooting button. The Activity page shows the last import and any problems. Turn automatic checks off there if you want.
 6. Review Zepp’s **App Background Permissions Settings** and your Nothing phone’s per-app battery settings if Bluetooth transfer stops in the background. Do not force-stop Zepp. Allow its background activity as appropriate. Steady still cannot make Zepp export on a guaranteed schedule.
 
 For a phone-free walk, start **Walking** on the watch and wait for its GPS fix before setting off. The watch can record without carrying the phone. Once back in Bluetooth range, Zepp is the bridge to the phone; any manufacturer account/internet requirements belong to Zepp. Detailed maps/routes remain in Zepp; Steady imports daily totals only. Verify the exact Bip Max model on the retailer’s listing before buying.

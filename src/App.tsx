@@ -65,7 +65,7 @@ export default function App() {
   }, [state ? JSON.stringify(state) : '', mode, online, sync]);
   useEffect(() => {
     const refresh = () => { if (document.visibilityState === 'visible') void sync(true); };
-    const timer = setInterval(refresh, 60000); window.addEventListener('online', refresh); document.addEventListener('visibilitychange', refresh);
+    const timer = setInterval(refresh, 30000); window.addEventListener('online', refresh); document.addEventListener('visibilitychange', refresh);
     return () => { clearInterval(timer); window.removeEventListener('online', refresh); document.removeEventListener('visibilitychange', refresh); };
   }, [sync]);
   async function setMode(value: SyncMode) { if (syncing.current) { setToast('Wait for the current sync to finish.'); return; } await writeMetadata('syncMode', value); modeRef.current = value; setModeState(value); setSyncProblem(false); channel.current?.postMessage('changed'); }
@@ -73,11 +73,11 @@ export default function App() {
   function go(next: Page) { setPage(next); window.scrollTo({ top: 0, behavior: 'instant' }); }
   async function download() { try { if (stateRef.current) await exportFile(JSON.stringify(stateRef.current, null, 2), `steady-backup-${localDate()}.json`); } catch (e) { setToast(e instanceof Error ? e.message : 'Could not export the file.'); } }
   async function restore(file: File) { try { if (file.size > 20_000_000) throw new Error('Backup must be smaller than 20 MB.'); setDialog({ type: 'restore', state: parseBackup(await file.text()) }); } catch (e) { setToast(e instanceof Error ? e.message : 'Could not read this backup.'); } }
-  const importHealth = useCallback(async (quiet = false) => {
-    if (healthRunning.current || quiet && Date.now() - healthChecked.current < 60000) return;
+  const importHealth = useCallback(async (quiet = false, lookbackDays = 7) => {
+    if (healthRunning.current || quiet && Date.now() - healthChecked.current < 2000) return;
     healthRunning.current = true; healthChecked.current = Date.now(); setHealthBusy(true);
     try {
-      const { records, incomplete } = await syncHealth(!quiet);
+      const { records, incomplete } = await syncHealth(!quiet, lookbackDays);
       if (!quiet) { await writeMetadata('healthAuto', true); setHealthAuto(true); }
       if (!records.length) {
         const message = 'Connected. Waiting for activity from Zepp.';
@@ -88,7 +88,7 @@ export default function App() {
         // A temporarily unavailable measurement must not erase a previously imported value.
         return { ...r, steps: r.steps ?? old?.steps ?? null, activeKcal: r.activeKcal ?? old?.activeKcal ?? null, distanceKm: r.distanceKm ?? old?.distanceKm ?? null };
       })], lastHealthSync: new Date().toISOString() }));
-      const message = incomplete ? 'Activity updated. Some measurements were unavailable; check health permissions.' : 'Activity is up to date. Automatic checks are on while Steady is open.';
+      const message = incomplete ? 'Activity updated. Some measurements were unavailable; check health permissions.' : 'Activity updated. Auto-checks run every 30 seconds while open.';
       setHealthStatus(message); if (!quiet) setToast(message);
     } catch (e) { const message = e instanceof Error ? e.message : 'Could not import health data.'; setHealthStatus(message); if (!quiet) setToast(message); }
     finally { healthRunning.current = false; setHealthBusy(false); }
@@ -96,7 +96,8 @@ export default function App() {
   useEffect(() => {
     if (!isNative || !healthAuto || !state) return;
     void importHealth(true);
-    const timer = setInterval(() => { if (document.visibilityState === 'visible') void importHealth(true); }, 5 * 60000);
+    // Recheck today and yesterday for delayed Zepp exports without polling all 7 days.
+    const timer = setInterval(() => { if (document.visibilityState === 'visible') void importHealth(true, 2); }, 30000);
     return () => clearInterval(timer);
   }, [healthAuto, !!state, importHealth]);
   useEffect(() => {

@@ -6,7 +6,7 @@ const read: HealthDataType[] = ['steps', 'calories', 'distance'];
 export const isNative = Capacitor.isNativePlatform();
 export const healthName = Capacitor.getPlatform() === 'ios' ? 'Apple Health' : 'Health Connect';
 
-export async function syncHealth(prompt = true): Promise<{ records: Activity[]; incomplete: boolean }> {
+export async function syncHealth(prompt = true, lookbackDays = 7): Promise<{ records: Activity[]; incomplete: boolean }> {
   if (!isNative) throw new Error('Automatic health sync is available in the Android and iPhone app. In this browser version, you can enter your daily activity manually.');
   const availability = await Health.isAvailable();
   if (!availability.available) throw new Error('Health data is unavailable. On Android, enable or install Health Connect, then try again.');
@@ -17,9 +17,11 @@ export async function syncHealth(prompt = true): Promise<{ records: Activity[]; 
   let incomplete = allowed.length < read.length;
   // Query each local calendar day explicitly. UTC dates would shift Malta's daily totals.
   // Native aggregate APIs resolve overlapping sources using the OS's activity priorities.
-  for (const date of daysEnding(localDate(), 7)) {
+  for (const date of daysEnding(localDate(), lookbackDays)) {
     const startDate = new Date(date + 'T00:00:00').toISOString();
-    const endDate = new Date(Math.min(new Date(shiftDate(date, 1) + 'T00:00:00').getTime(), Date.now())).toISOString();
+    // Zepp publishes measured steps in intervals which can end later than now.
+    // Clipping an interval makes Health Connect prorate away steps already recorded.
+    const endDate = new Date(shiftDate(date, 1) + 'T00:00:00').toISOString();
     const values = await Promise.allSettled(read.map(async dataType => {
       if (!allowed.includes(dataType)) return null;
       const result = await Health.queryAggregated({ dataType, startDate, endDate, bucket: 'day', aggregation: 'sum' });

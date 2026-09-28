@@ -10,9 +10,9 @@ A personal food and fitness diary for desktop, Android and iPhone. Food logging,
 - An offline library of 24 USDA reference foods, with separate raw/cooked entries and source links. Add your own foods from package labels. Compact rows show 10, 20 or 50 foods at a time; search covers the whole library, including offline. Recipes, food logging and ingredient selection also have bounded result pages.
 - Build recipes from ingredients, specify the finished dish weight and number of servings, then log grams or portions. Past diary entries retain their original nutrition when a recipe changes.
 - Daily diary, calorie/macro totals, weight tracking and 7/30/90/365-day progress views.
-- Native phone integration reads steps, active energy and walking/running distance from Health Connect / Apple Health. Connect once; checks run on opening, returning to the app and every five minutes while open.
+- Native phone integration reads steps, active energy and walking/running distance from Health Connect / Apple Health. Connect once; checks run on opening, returning to the app and every 30 seconds while open.
 - Optional **phone notifications** at 10:00, 14:00 and 21:00, repeating every 20 minutes until you log or skip that meal for the day. Android uses a rolling native alarm that works offline while closed. Times and the overnight cutoff are editable. An alternative daily check-in is available.
-- Automatic hosted or local sync after edits, on reconnect, on returning to the app and approximately once a minute while open.
+- Automatic hosted or local sync after edits, on reconnect, on returning to the app and every 30 seconds while open.
 - Three-way sync combines independent changes and asks you to resolve conflicting edits. Export/restore JSON backups.
 
 No ads, analytics, paid food database or subscription is built into the project. Calorie targets are optional and are not prescribed by the app. Watch activity calories are estimates and do not automatically increase your food allowance.

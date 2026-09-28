@@ -18,7 +18,7 @@ export default function Activity({ state, date, setDate, busy, automatic, status
       {status && <p className="activity-status" role="status">{status}</p>}
       <details className="help-details"><summary>Sync help</summary>
         <p>Watch → Zepp → {healthName} → Steady. Allow Zepp to share activity, then connect health in the installed phone app.</p>
-        <p>Steady checks the last 7 days on opening, returning to the app and every 5 minutes while open. Health imports stop when the app is closed. Hosted sync shares the results with your desktop while Steady is open and online.</p>
+        <p>Steady checks the last 7 days on opening and returning to the app, then today and yesterday every 30 seconds while open. Health imports stop when the app is closed. Hosted sync shares the results with your desktop while Steady is open and online.</p>
         <p>If phone and watch both record steps, check source priority in {healthName}. Detailed routes stay in Zepp.</p>
         {isNative && automatic && <button className="text-button" onClick={disableAuto}>Turn off automatic activity checks</button>}
       </details>
