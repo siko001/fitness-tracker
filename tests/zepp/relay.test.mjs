@@ -31,7 +31,7 @@ test('pairing rejects insecure endpoints and malformed credentials', () => {
 });
 test('watch sends changed totals on the next minute, keeps quiet totals at 15 minutes, retries and handles rollover without timers', () => {
   let service, minute, changed, receive, reconnect, now = sample.at, steps = 801;
-  let connected = true, sent = [], writes = 0;
+  let connected = true, sent = [], writes = 0, activePort = 77;
   const date = () => new Date(now + 120 * 60000);
   class Time {
     getTime() { return now; } getFullYear() { return date().getUTCFullYear(); } getMonth() { return date().getUTCMonth() + 1; }
@@ -41,21 +41,28 @@ test('watch sends changed totals on the next minute, keeps quiet totals at 15 mi
   class Step { getCurrent() { return steps; } onChange(fn) { changed = fn; } offChange() {} }
   const code = readFileSync(new URL('../../zepp/steady/app-service/steps.js', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '');
   vm.runInNewContext(code, { ...protocol, ...transport, Time, Step, AppService: s => { service = s; },
+    log: { getLogger: () => ({ log() {} }) },
     getPackageInfo: () => ({ appId: 123 }), createConnect: fn => { receive = fn; }, disConnect() {},
     addListener: fn => { reconnect = fn; }, removeListener() {}, connectStatus: () => connected,
     send: buf => { sent.push(transport.unframe(buf, buf.byteLength, 123)); },
     readFileSync() { throw Error('No file yet'); }, writeFileSync() { writes++; }, renameSync: () => 0,
   });
-  const incoming = (type, payload) => { const buf = transport.frame(type, 123, 77, payload); receive(0, buf, buf.byteLength); };
-  const confirm = () => { const s = protocol.decode(sent.at(-1).payload); incoming(4, protocol.encode({ v: 1, type: 'ack', date: s.date, at: s.at })); };
+  const incoming = (type, payload) => { const buf = transport.frame(type, 123, activePort, payload); receive(0, buf, buf.byteLength); };
+  const confirm = (type = 4) => { const s = protocol.decode(sent.at(-1).payload); incoming(type, protocol.encode({ v: 1, type: 'ack', date: s.date, at: s.at })); };
   service.onInit(); assert.equal(sent[0].type, 1); // runtime handshake
   incoming(1); assert.equal(protocol.decode(sent.at(-1).payload).steps, 801); confirm();
   sent = [];
+  // Zepp restarts its Side Service while Bluetooth stays connected. Never reuse
+  // its old port forever: the next batch must negotiate the replacement route.
+  activePort = 88;
   steps += 3; changed(); assert.equal(sent.length, 0);
-  now += 60000; minute(); assert.equal(protocol.decode(sent.at(-1).payload).steps, 804); confirm(); sent = [];
+  now += 60000; minute(); assert.equal(sent.at(-1).type, 1); assert.equal(sent.at(-1).port, 0);
+  incoming(1); assert.equal(sent.at(-1).port, 88); assert.equal(protocol.decode(sent.at(-1).payload).steps, 804); confirm(5); sent = [];
   for (let i = 0; i < 14; i++) { now += 60000; minute(); }
   assert.equal(sent.length, 0); now += 60000; minute(); assert.equal(sent.length, 1);
-  now += 60000; minute(); assert.equal(sent.length, 2); // no acknowledgement
+  incoming(1); const beforeRetry = sent.length;
+  now += 60000; minute(); assert.equal(sent.length, beforeRetry + 1); assert.equal(sent.at(-1).type, 1); // no acknowledgement, reopen route
+  incoming(1);
   confirm(); sent = []; connected = false; reconnect(false);
   now = Date.parse('2026-09-29T21:59:00Z'); steps = 1000; changed(); minute();
   now += 60000; steps = 0; changed(); minute();
@@ -64,4 +71,45 @@ test('watch sends changed totals on the next minute, keeps quiet totals at 15 mi
   assert.equal(protocol.decode(sent.at(-1).payload).date, '2026-09-30');
   assert.equal(protocol.decode(sent.at(-1).payload).steps, 0); confirm();
   assert.ok(writes > 0); service.onDestroy();
+});
+
+test('phone relay releases a stalled fetch, retries queued steps and ignores late results', async () => {
+  const values = new Map([['pairing', JSON.stringify({ version: 1, url: 'https://abcdefghijklmnopqrst.supabase.co', key: 'public', token: 'a'.repeat(64) })]]);
+  let service, message, retry, deadline, oldResolve, calls = 0;
+  const sent = [];
+  const storage = { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value), addListener() {}, removeListener() {} };
+  const code = readFileSync(new URL('../../zepp/steady/app-side/index.js', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '');
+  vm.runInNewContext(code, { ...protocol, AppSideService: s => { service = s; }, settings: { settingsStorage: storage },
+    console: { log() {} }, Date: class extends Date { static now() { return sample.at + 60000; } },
+    messaging: { peerSocket: { addListener: (_event, fn) => { message = fn; }, removeListener() {}, send: data => sent.push(protocol.decode(data)) } },
+    setInterval: fn => { retry = fn; return 1; }, clearInterval() {},
+    setTimeout: fn => { deadline = fn; return 2; }, clearTimeout() {},
+    fetch: () => { calls++; return calls === 1 ? new Promise(resolve => { oldResolve = resolve; }) : Promise.resolve({ body: { ok: true } }); },
+  });
+  const settle = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
+  service.onInit(); message(protocol.encode(sample)); await settle();
+  assert.equal(calls, 1); assert.equal(sent.length, 0);
+  deadline(); await settle();
+  assert.equal(JSON.parse(values.get('pending')).length, 1);
+  assert.match(values.get('status'), /Waiting to upload/);
+  retry(); await settle(); assert.equal(calls, 2); assert.equal(sent.length, 1);
+  assert.equal(JSON.parse(values.get('pending')).length, 0);
+  oldResolve({ body: { ok: true } }); await settle(); assert.equal(sent.length, 1);
+  assert.ok(values.get('lastWatchContact')); service.onDestroy();
+});
+
+test('watch page centres all widgets in the actual compatibility drawing area', () => {
+  const code = readFileSync(new URL('../../zepp/steady/page/index.js', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '');
+  for (const [width, height] of [[390, 450], [432, 514]]) {
+    let page; const widgets = [];
+    vm.runInNewContext(code, { Page: p => { page = p; }, getDeviceInfo: () => ({ width, height }),
+      createWidget: (_kind, options) => { widgets.push(options); return { setProperty() {} }; }, widget: {}, prop: {}, align: {},
+      Step: class { getCurrent() { return 100; } onChange() {} offChange() {} },
+      getAllAppServices: () => ['app-service/steps'], queryPermission: () => [2],
+      readFileSync() { throw Error('No diagnostic file'); },
+    });
+    page.build();
+    for (const w of widgets) { assert.ok(Math.abs(w.x + w.w / 2 - width / 2) <= 0.5); assert.ok(w.x >= 0 && w.x + w.w <= width); assert.ok(w.y >= 0 && w.y + w.h <= height); }
+    page.onDestroy();
+  }
 });

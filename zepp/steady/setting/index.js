@@ -10,6 +10,7 @@ AppSettingsPage({
           catch (_) { props.settingsStorage.setItem('status', 'Invalid configuration. Paste the entire configuration from Steady.'); }
         } }),
       Text({ paragraph: true }, props.settingsStorage.getItem('status') || 'Not paired yet.'),
+      Text({ paragraph: true }, 'Last watch contact: ' + (props.settingsStorage.getItem('lastWatchContact') || 'Waiting for the watch')),
       Text({ paragraph: true }, 'Changed steps are sent about once a minute, with a check every 15 minutes while stationary. Zepp must be allowed to run in the background. Watch readings may be delayed while disconnected.'),
     ]);
   },

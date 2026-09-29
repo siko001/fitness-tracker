@@ -38,6 +38,8 @@ Sign in with the Zepp account that owns that app ID. Preview creates an installa
 
 The target is square-screen API level 3.0+, including the Bip Max. It intentionally uses Zepp's documented **390×450 compatibility drawing area**. The compiler emits a Bip Max 432×514 ZPS package as well. No unverified newer firmware API is required. Check the actual API level under Zepp Developer Mode → Device information before installing.
 
+Watch 0.1.2 sizes and centres widgets from `getDeviceInfo()`'s drawing area, so panel-size scaling cannot shift the compatibility layout. Its Checked/Delivered times read a service status file saved while the screen is off; reopen the page to inspect the last saved status. These are diagnostics, not a reason to keep the app open.
+
 On the phone:
 
 1. In Zepp, open **Profile → Settings → About** and tap the Zepp icon seven times to enable Developer Mode (labels can vary by app version).
@@ -51,6 +53,8 @@ On the phone:
 Watch mini app 0.1.1 uses low-power Time and Step events, not global timers or 600 ms one-shot alarms. Changed step totals and day rollover are sent on the next minute event; when the count stays unchanged, it sends a check about every 15 minutes. It also sends immediately on start/reconnection. An unacknowledged delivery retries on minute events. Small packets use the official sample's device-side BLE routing envelope; Zepp's phone runtime handles that envelope before delivering the payload to the Side Service.
 
 Steady checks for new direct snapshots every 10 seconds while visible and immediately on focus, foreground/resume and network recovery. Main totals and comparison readings update without a page refresh. The last-check time shows the app polling, while capture/receive times describe the watch snapshot. Zepp and Bluetooth availability can extend these intervals. The original watch mini app 0.1.0 keeps its 15-minute schedule until updated through a new preview QR.
+
+Watch 0.1.2 re-establishes the Zepp Side Service routing session for each scheduled upload and retry. A continuously running watch service must not reuse an expired phone-side port indefinitely merely because Bluetooth stayed connected. It also accepts both data envelope variants used by the official sample. Phone uploads have a 25-second deadline so a stuck fetch cannot block all later readings; server timestamp checks keep late/duplicate writes safe. Zepp settings show Last watch contact separately from successful server delivery. No pairing credential is logged.
 
 The watch keeps the latest observed reading for up to 32 days. It checkpoints on minute events using temporary-file/rename persistence; service writes may fail while the screen is on and are retried when allowed. The phone Side Service also persists pending daily readings and retries on startup, incoming packets and minute timers while Zepp lets it run. The watch only discards a snapshot after the server acknowledged it. In-flight acknowledgements cannot erase newer readings.
 

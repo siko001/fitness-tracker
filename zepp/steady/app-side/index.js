@@ -5,6 +5,16 @@ const storage = () => settings.settingsStorage;
 function status(text) { storage().setItem('status', text); }
 function persist() { storage().setItem('pending', JSON.stringify(pending)); }
 function ack(snapshot) { messaging.peerSocket.send(encode({ v: 1, type: 'ack', date: snapshot.date, at: snapshot.at })); }
+async function upload(options) {
+  let timeout;
+  try {
+    // Zepp fetch can remain pending after a phone network change. Release the
+    // upload lock so persisted readings can retry; late results cannot clear it.
+    return await Promise.race([fetch(options), new Promise((_, reject) => {
+      timeout = setTimeout(() => reject(new Error('Upload timed out')), 25000);
+    })]);
+  } finally { clearTimeout(timeout); }
+}
 async function flush() {
   if (active || !pending.length) return;
   active = true;
@@ -13,7 +23,7 @@ async function flush() {
     while (pending.length) {
       const snapshot = pending[0];
       if (Date.now() - snapshot.at > 32 * 86400000) { pending.shift(); persist(); continue; }
-      const response = await fetch({ url: config.url + '/rest/v1/rpc/ingest_zepp_steps', method: 'POST',
+      const response = await upload({ url: config.url + '/rest/v1/rpc/ingest_zepp_steps', method: 'POST',
         headers: { apikey: config.key, 'Content-Type': 'application/json' },
         body: JSON.stringify({ pairing_token: config.token, watch_date: snapshot.date, step_count: snapshot.steps,
           captured_at: new Date(snapshot.at).toISOString(), utc_offset_minutes: snapshot.offset }) });
@@ -28,12 +38,13 @@ async function flush() {
   finally { active = false; }
 }
 function message(buffer) {
-  try { const snapshot = decode(buffer); if (!validSnapshot(snapshot)) return; pending = enqueue(pending, snapshot); persist(); void flush(); }
+  try { const snapshot = decode(buffer); if (!validSnapshot(snapshot)) return; storage().setItem('lastWatchContact', new Date().toISOString()); pending = enqueue(pending, snapshot); persist(); console.log('Steady: received watch reading'); void flush(); }
   catch (_) { /* ignore malformed BLE packet */ }
 }
 function changed(event) { if (event.key === 'pairing') void flush(); }
 AppSideService({
   onInit() {
+    console.log('Steady: phone relay started 0.1.2');
     try { const saved = JSON.parse(storage().getItem('pending')); pending = Array.isArray(saved) ? saved.filter(validSnapshot).slice(-32) : []; } catch (_) {}
     messaging.peerSocket.addListener('message', message);
     storage().addListener('change', changed);
