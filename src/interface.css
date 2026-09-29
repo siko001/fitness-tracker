@@ -200,3 +200,11 @@
   .meal-empty-actions { padding-left: 0; gap: 20px; }
   .meal-empty-actions .add-meal { flex: 1; }
 }
+.zepp-sync { margin-top: 20px; }
+.zepp-sync > p, .zepp-comparison p, .zepp-pairing p { margin: 12px 0; line-height: 1.55; }
+.zepp-sync h2 { font-size: 18px; }
+.zepp-sync .connection-actions { flex-wrap: wrap; }
+.zepp-comparison { padding: 4px 16px; margin: 16px 0; border-left: 3px solid var(--accent, #214d3b); }
+.zepp-pairing { margin-top: 16px; }
+.zepp-pairing textarea { display: block; width: 100%; min-height: 96px; font-size: 12px; overflow-wrap: anywhere; margin-top: 8px; }
+.zepp-sync li { margin: 8px 0; line-height: 1.5; }

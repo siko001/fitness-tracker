@@ -16,7 +16,8 @@
     "ios": "cap open ios",
     "local:start": "node server/manage.mjs start",
     "local:stop": "node server/manage.mjs stop",
-    "local:status": "node server/manage.mjs status"
+    "local:status": "node server/manage.mjs status",
+    "test:zepp": "node tests/zepp/database.mjs && node --test tests/zepp/relay.test.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",
@@ -36,6 +37,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.4.3",
+    "@electric-sql/pglite": "^0.5.8",
     "@playwright/test": "^1.63.0",
     "@types/node": "^26.6.3",
     "@types/react": "^19.3.0",

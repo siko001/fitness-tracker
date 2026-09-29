@@ -1,5 +1,7 @@
 # Set up Steady
 
+Direct Zepp watch integration is available as an opt-in test alongside Health Connect. See [watch installation, pairing and validation](zepp-direct.md). Keep the existing health connection enabled until direct delivery is verified on the watch.
+
 For convenient everyday use, use **Vercel for the website + Supabase for your private diary + the installed Android app on your Nothing Phone 3a**. You get one website address for the desktop, and the same diary in your phone app. Your computer can be off. You do not need to leave a terminal running.
 
 The local server is an optional alternative. Choose one sync mode on each device at a time. Hosted mode is the easiest default; local mode works without internet when your devices can reach your computer.

@@ -4,9 +4,11 @@ import { healthName, isNative } from './health';
 import { dayActivity, fmt, type State } from './model';
 import { Empty } from './ui';
 import BackgroundActivity from './BackgroundActivity';
+import ZeppActivity from './ZeppActivity';
+import type { ZeppController } from './useZepp';
 
-export default function Activity({ state, date, setDate, busy, automatic, status, sync, disableAuto, enterTotals }: {
-  state: State; date: string; setDate: (date: string) => void; busy: boolean; automatic: boolean;
+export default function Activity({ state, healthState, zepp, date, setDate, busy, automatic, status, sync, disableAuto, enterTotals }: {
+  state: State; healthState: State; zepp: ZeppController; date: string; setDate: (date: string) => void; busy: boolean; automatic: boolean;
   status: string; sync: () => void; disableAuto: () => void; enterTotals: () => void;
 }) {
   const activity = dayActivity(state, date);
@@ -28,10 +30,11 @@ export default function Activity({ state, date, setDate, busy, automatic, status
       </details>
     </section>
     <div className="stats-row">
-      <div className="card"><p>{activity?.stepSource === 'zepp' ? 'Steps · Zepp watch' : 'Steps'}</p><strong>{activity?.steps != null ? fmt(activity.steps) : '—'}</strong><span>{state.profile.stepGoal ? `Goal: ${fmt(state.profile.stepGoal)}` : 'No goal set'}</span></div>
+      <div className="card"><p>{activity?.stepSource === 'zepp-direct' ? 'Steps · Direct watch' : activity?.stepSource === 'zepp' ? 'Steps · Zepp watch' : 'Steps'}</p><strong>{activity?.steps != null ? fmt(activity.steps) : '—'}</strong><span>{state.profile.stepGoal ? `Goal: ${fmt(state.profile.stepGoal)}` : 'No goal set'}</span></div>
       <div className="card"><p>Active calories</p><strong>{activity?.activeKcal != null ? fmt(activity.activeKcal) : '—'}<small> kcal</small></strong><span>Estimated · excludes resting energy</span></div>
       <div className="card"><p>Walking / running distance</p><strong>{activity?.distanceKm != null ? fmt(activity.distanceKm, 2) : '—'}<small> km</small></strong><span>{activity ? activity.source === 'manual' ? 'Manual entry' : 'Imported' : 'No data yet'}</span></div>
     </div>
+    <ZeppActivity zepp={zepp} state={healthState} date={date} />
     {!activity && <section className="card"><Empty title="No activity yet" detail="Import from your phone or enter daily totals." /></section>}
   </>;
 }

@@ -20,6 +20,8 @@ import ProfileMenu from './ProfileMenu';
 import FoodImport from './FoodImport';
 import { adoptBackgroundSession, clearBackground, configureBackground, consumeBackground, mergeHealthRecords } from './native-background';
 import { usePage, type Page } from './navigation';
+import { useZepp } from './useZepp';
+import { withZeppSteps } from './zepp';
 
 type Dialog = { type: 'import' } | { type: 'log'; meal: Meal; entry?: Entry } | { type: 'food'; food?: Food } | { type: 'recipe'; recipe?: Recipe } | { type: 'weight' } | { type: 'activity' } | { type: 'restore'; state: State } | { type: 'clear' } | { type: 'conflict'; details: ConflictDetail[] } | { type: 'delete'; title: string; remove: (s: State) => State };
 const pages = [{ name: 'Overview', icon: LayoutDashboard }, { name: 'Food diary', icon: BookOpen }, { name: 'Food library', icon: Leaf }, { name: 'Recipes', icon: ChefHat }, { name: 'Progress', icon: BarChart3 }, { name: 'Activity', icon: Footprints }] as const;
@@ -32,6 +34,7 @@ export default function App() {
   const [healthAuto, setHealthAuto] = useState(false), [healthStatus, setHealthStatus] = useState('');
   const healthRunning = useRef(false), healthChecked = useRef(0);
   const [mode, setModeState] = useState<SyncMode>('off'), [syncBusy, setSyncBusy] = useState(false), [syncStatus, setSyncStatus] = useState(''), [syncProblem, setSyncProblem] = useState(false);
+  const zepp = useZepp(mode);
   const syncing = useRef(false), stateRef = useRef(state), modeRef = useRef(mode); stateRef.current = state; modeRef.current = mode;
   const channel = useRef<BroadcastChannel | null>(null);
   useEffect(() => {
@@ -113,6 +116,7 @@ export default function App() {
   if (!state) return <div className="loading-screen"><Logo /><p>{loadError || 'Opening your diary…'}</p>{loadError && <button className="button primary" onClick={() => location.reload()}>Try again</button>}</div>;
   const actions: DiaryActions = { skip: meal => void change(s => ({ ...s, skippedMeals: [...s.skippedMeals.filter(x => x.date !== date || x.meal !== meal), { date, meal }] }), `${meal} skipped for this day.`).catch(e => setToast(String(e))), undoSkip: meal => void change(s => ({ ...s, skippedMeals: s.skippedMeals.filter(x => x.date !== date || x.meal !== meal) }), 'Meal check-in restored.').catch(e => setToast(String(e))), add: meal => setDialog({ type: 'log', meal }), edit: entry => setDialog({ type: 'log', meal: entry.meal, entry }), remove: entry => setDialog({ type: 'delete', title: `Remove ${entry.name}?`, remove: s => ({ ...s, entries: s.entries.filter(e => e.id !== entry.id) }) }), weight: () => setDialog({ type: 'weight' }), activity: () => go('Activity'), settings: () => go('Settings'), progress: () => go('Progress') };
   const activity = dayActivity(state, date);
+  const displayState = withZeppSteps(state, zepp.data);
   const syncLabel = mode === 'off' ? 'Local only' : !online ? 'Offline' : syncProblem ? 'Sync issue' : syncBusy ? 'Syncing' : 'Saved';
   const syncDetail = mode === 'off' ? 'Sync is off. Changes stay on this device.' : !online ? 'Saved on this device. Sync resumes when connected.' : syncProblem ? 'Your diary is saved here. Review sync in Settings.' : syncBusy ? 'Syncing your diary' : 'Saved on this device. Automatic sync enabled.';
   function logFood(food: Food) { setDialog({ type: 'log', meal: 'Lunch', entry: { id: uid(), date, meal: 'Lunch', name: food.name, preparation: food.preparation, grams: food.serving?.grams ?? 100, per100: food.per100, foodId: food.id } }); }
@@ -122,12 +126,12 @@ export default function App() {
       {!isNative && <PwaStatus />}
       {syncProblem && mode !== 'off' && <div className="update-banner"><span>Your diary is saved here. Sync needs attention.</span><button onClick={() => go('Settings')}>Review sync</button></div>}
       <main className="main-content">
-        {page === 'Overview' && <Dashboard state={state} date={date} setDate={setDate} actions={actions} />}
+        {page === 'Overview' && <Dashboard state={displayState} date={date} setDate={setDate} actions={actions} />}
         {page === 'Food diary' && <><div className="page-heading"><div><h1>Food diary</h1></div><DateSwitcher date={date} onChange={setDate} /></div><Diary state={state} date={date} actions={actions} /></>}
         {page === 'Food library' && <FoodLibrary state={state} importFood={() => setDialog({ type: 'import' })} add={() => setDialog({ type: 'food' })} edit={food => setDialog({ type: 'food', food })} log={logFood} />}
         {page === 'Recipes' && <Recipes state={state} add={() => setDialog({ type: 'recipe' })} edit={recipe => setDialog({ type: 'recipe', recipe })} log={logRecipe} />}
-        {page === 'Progress' && <Progress state={state} date={date} period={period} setPeriod={setPeriod} logWeight={actions.weight} deleteWeight={d => setDialog({ type: 'delete', title: `Remove the weigh-in for ${d}?`, remove: s => ({ ...s, weights: s.weights.filter(w => w.date !== d) }) })} />}
-        {page === 'Activity' && <Activity state={state} date={date} setDate={setDate} busy={healthBusy} automatic={healthAuto} status={healthStatus} sync={() => void importHealth()} enterTotals={() => setDialog({ type: 'activity' })} disableAuto={() => void writeMetadata('healthAuto', false).then(() => { setHealthAuto(false); setHealthStatus('Automatic activity checks are off.'); })} />}
+        {page === 'Progress' && <Progress state={displayState} date={date} period={period} setPeriod={setPeriod} logWeight={actions.weight} deleteWeight={d => setDialog({ type: 'delete', title: `Remove the weigh-in for ${d}?`, remove: s => ({ ...s, weights: s.weights.filter(w => w.date !== d) }) })} />}
+        {page === 'Activity' && <Activity state={displayState} healthState={state} zepp={zepp} date={date} setDate={setDate} busy={healthBusy} automatic={healthAuto} status={healthStatus} sync={() => void importHealth()} enterTotals={() => setDialog({ type: 'activity' })} disableAuto={() => void writeMetadata('healthAuto', false).then(() => { setHealthAuto(false); setHealthStatus('Automatic activity checks are off.'); })} />}
         {page === 'Settings' && <Settings appearance={appearance} state={state} saveProfile={profile => change(s => ({ ...s, profile }))} download={() => void download()} restore={f => void restore(f)} clear={() => setDialog({ type: 'clear' })} sync={() => void sync()} syncBusy={syncBusy} mode={mode} setMode={m => void setMode(m)} status={syncStatus} />}
         <footer className="page-footer"><Logo small /></footer>
       </main><nav className="mobile-nav">{([{ name: 'Overview', icon: LayoutDashboard }, { name: 'Food library', icon: Leaf }, { name: 'Recipes', icon: ChefHat }, { name: 'Progress', icon: BarChart3 }, { name: 'Activity', icon: Footprints }, { name: 'Settings', icon: SettingsIcon }] as const).map(p => <button className={page === p.name ? 'active' : ''} key={p.name} aria-label={p.name === 'Food library' ? 'Foods' : p.name === 'Overview' ? 'Today' : p.name} title={p.name} onClick={() => go(p.name)}><p.icon size={20} /><span>{p.name === 'Food library' ? 'Foods' : p.name === 'Overview' ? 'Today' : p.name}</span></button>)}</nav></div>

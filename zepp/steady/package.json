@@ -1,0 +1,15 @@
+{
+  "name": "steady-zepp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "configure": "node configure.mjs",
+    "build": "node zeus.cjs build",
+    "preview": "node zeus.cjs preview",
+    "login": "node zeus.cjs login"
+  },
+  "devDependencies": {
+    "@zeppos/zeus-cli": "1.9.3"
+  }
+}
