@@ -26,10 +26,10 @@ export function mergeStates(base: State, local: State, remote: State, choice?: C
     if (choice) return choice === 'local' ? ours : theirs;
     conflicts.push({ label, local: describe(ours), remote: describe(theirs) }); return ours;
   }
-  function rows<T>(old: T[], ours: T[], theirs: T[], key: (x: T) => string, label: string) {
+  function rows<T>(old: T[], ours: T[], theirs: T[], key: (x: T) => string, label: string, resolve?: (a: T, b: T) => T | undefined) {
     const maps = [old, ours, theirs].map(xs => new Map(xs.map(x => [key(x), x])));
     const keys = new Set(maps.flatMap(m => [...m.keys()]));
-    return [...keys].map(k => choose(maps[0].get(k), maps[1].get(k), maps[2].get(k), `${label} ${k}`)).filter((v): v is T => v !== undefined);
+    return [...keys].map(k => { const a = maps[1].get(k), b = maps[2].get(k); return a && b && resolve?.(a, b) || choose(maps[0].get(k), a, b, `${label} ${k}`); }).filter((v): v is T => v !== undefined);
   }
   const profile = { ...local.profile };
   for (const key of Object.keys(profile) as (keyof State['profile'])[]) {
@@ -42,8 +42,12 @@ export function mergeStates(base: State, local: State, remote: State, choice?: C
     entries: rows(base.entries, local.entries, remote.entries, x => x.id, 'diary entry'),
     skippedMeals: rows(base.skippedMeals ?? [], local.skippedMeals ?? [], remote.skippedMeals ?? [], x => `${x.date}:${x.meal}`, 'skipped meal'),
     weights: rows(base.weights, local.weights, remote.weights, x => x.date, 'weigh-in'),
-    activities: rows(base.activities, local.activities, remote.activities, x => `${x.date}:${x.source}`, 'activity'),
-    lastHealthSync: [local.lastHealthSync, remote.lastHealthSync].filter((x): x is string => !!x).sort().at(-1) ?? null,
+    activities: rows(base.activities, local.activities, remote.activities, x => `${x.date}:${x.source}`, 'activity', (a, b) => {
+      if (a.source !== 'health' || b.source !== 'health') return undefined;
+      const [latest, older] = Date.parse(a.updatedAt) >= Date.parse(b.updatedAt) ? [a, b] : [b, a];
+      return { ...latest, steps: latest.steps ?? older.steps, activeKcal: latest.activeKcal ?? older.activeKcal, distanceKm: latest.distanceKm ?? older.distanceKm };
+    }),
+    lastHealthSync: [local.lastHealthSync, remote.lastHealthSync].filter((x): x is string => !!x).sort((a, b) => Date.parse(a) - Date.parse(b)).at(-1) ?? null,
   };
   if (conflicts.length) throw new SyncConflict(conflicts);
   return stateSchema.parse(result);

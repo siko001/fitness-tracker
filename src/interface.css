@@ -58,6 +58,62 @@
 .food-picker { margin-bottom: 12px; }
 .ingredient-search { margin-bottom: 12px; }
 .ingredient-search .pagination { margin-bottom: 4px; }
+.heading-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.topbar-actions { gap: 14px; }
+.sync-indicator { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 32px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 20px; background: transparent; color: var(--muted); font-size: 11px; white-space: nowrap; }
+.sync-indicator .status-dot { margin: 0; }
+.sync-indicator.offline, .sync-indicator.problem { color: #a36b2e; }
+.import-steps { display: flex; gap: 15px; padding: 0 0 16px; margin: 0 0 20px; list-style: none; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.import-steps [aria-current] { color: var(--ink); font-weight: 650; }
+.import-search { display: flex; gap: 10px; align-items: stretch; }
+.import-search .search-box { flex: 1; min-width: 0; margin: 0; }
+.import-search input { min-width: 0; width: 100%; }
+.import-note { color: var(--muted); font-size: 12px; line-height: 1.65; margin: 14px 0; }
+.import-results { border-top: 1px solid var(--line); }
+.import-result { width: 100%; display: flex; align-items: center; justify-content: space-between; text-align: left; gap: 18px; background: transparent; color: var(--ink); border-bottom: 1px solid var(--line); padding: 16px 0; font-size: 12px; }
+.import-result strong { display: block; font-weight: 600; font-size: 14px; line-height: 1.5; }
+.import-result small { display: block; color: var(--muted); font-size: 11px; margin-top: 5px; line-height: 1.5; }
+.import-result > span:last-child { flex-shrink: 0; text-align: right; max-width: 35%; }
+.import-result:hover strong { text-decoration: underline; }
+.import-paging { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 20px; font-size: 12px; }
+.import-source { display: flex; flex-direction: column; gap: 7px; padding: 15px; margin: 0 0 20px; border: 1px solid var(--line); border-radius: 9px; font-size: 12px; overflow-wrap: anywhere; }
+.import-source small { color: var(--muted); }
+.import-food-name { font-size: 20px; line-height: 1.4; margin: 0 0 8px; }
+.import-nutrition { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 12px; }
+.import-nutrition th, .import-nutrition td { padding: 12px 8px; border-bottom: 1px solid var(--line); text-align: right; font-variant-numeric: tabular-nums; }
+.import-nutrition th:first-child { text-align: left; }
+.import-nutrition tbody th { font-weight: 500; background: transparent; }
+.check-field { display: flex; align-items: flex-start; gap: 10px; font-size: 12px; line-height: 1.7; margin: 12px 0; color: var(--ink); cursor: pointer; }
+.check-field input { width: 18px; height: 18px; margin-top: 1px; flex-shrink: 0; accent-color: var(--green); }
+.quick-ingredients { border: 1px solid var(--line); border-radius: 9px; padding: 14px; margin-bottom: 20px; }
+.quick-ingredients summary { cursor: pointer; font-size: 13px; font-weight: 550; }
+.quick-ingredients[open] summary { margin-bottom: 20px; }
+.field textarea { width: 100%; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 7px; font: inherit; font-size: 14px; padding: 12px; resize: vertical; min-height: 100px; }
+.quick-row { border-top: 1px solid var(--line); padding: 10px 0 16px; }
+.quick-row .form-grid { grid-template-columns: minmax(0, 1fr) 100px; }
+.quick-row select { max-width: 100%; }
+.quick-nutrition { display: flex; flex-direction: column; gap: 6px; font-size: 11px; color: var(--muted); line-height: 1.5; }
+.quick-rows { margin-bottom: 15px; }
+.diary-entry time { font-variant-numeric: tabular-nums; }
+.background-health { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 18px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.background-health strong { font-size: 13px; }
+.background-health p { font-size: 12px; line-height: 1.6; margin-top: 6px; }
+.background-detail, .background-health .form-error { flex-basis: 100%; }
+:root[data-theme="dark"] .field textarea { background: #1c1f22; }
+:root[data-theme="dark"] .sync-indicator.offline, :root[data-theme="dark"] .sync-indicator.problem { color: #e1c28f; }
+@media (max-width: 680px) {
+  .heading-actions { width: 100%; }
+  .heading-actions .button { flex: 1; }
+  .topbar-actions { gap: 8px; }
+  .sync-indicator { padding: 7px; width: 32px; }
+  .sync-indicator > .sync-label { display: none; }
+  .import-steps { font-size: 11px; gap: 10px; }
+  .import-search { gap: 8px; }
+  .import-result { gap: 10px; }
+  .import-result strong { font-size: 13px; }
+  .quick-row .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .field textarea { font-size: 16px; }
+}
 
 @media (max-width: 1150px) {
   .food-row { grid-template-columns: minmax(140px, 1fr) 60px 154px 92px; gap: 14px; padding: 15px; }

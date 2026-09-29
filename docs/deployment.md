@@ -9,9 +9,9 @@ The local server is an optional alternative. Choose one sync mode on each device
 | Action | Behaviour |
 | --- | --- |
 | Add/edit a recipe, food, diary item, weigh-in or profile | Saves immediately on that device. Uploads about two seconds after the edit, while open and connected. |
-| Another device is already open | Checks for changes approximately every minute. Returning to its window/app also triggers a check. |
+| Another device is already open | Checks for changes approximately every 30 seconds. Returning to its window/app also triggers a check. |
 | Log food offline | Saves locally. Uploads when connection returns while open, or when you next open the app. |
-| Close the desktop tab or phone app | Food remains saved. This version does not run diary sync while closed. |
+| Close the desktop tab or phone app | Food remains saved. Food/recipe edits wait until reopening; optional Android background checks can still import and upload activity. |
 | Watch reconnects to phone | Zepp controls Bluetooth transfer and publishing into Health Connect. Steady cannot force this. |
 | Open/return to the connected native Steady app | Reads seven days of health totals automatically; rechecks today and yesterday every 30 seconds while open. Diary sync shares the results. |
 | Food reminder is due | Android shows the meal notification and plans the next check about 20 minutes later, even offline/with Steady closed. Battery-saving rules can delay delivery. |
@@ -127,7 +127,7 @@ You do not need the watch to use food logging, recipes, weight, notifications or
 
 For a phone-free walk, start **Walking** on the watch and wait for its GPS fix before setting off. The watch can record without carrying the phone. Once back in Bluetooth range, Zepp is the bridge to the phone; any manufacturer account/internet requirements belong to Zepp. Detailed maps/routes remain in Zepp; Steady imports daily totals only. Verify the exact Bip Max model on the retailer’s listing before buying.
 
-Full background health reading/upload while Steady is closed is **not implemented** in this version. Android has a separate background health permission and scheduled-work mechanism; it is not granted by ordinary read access. This needs native implementation and device testing if you later want fresh desktop activity without opening Steady at all. Opening the app to respond to a food reminder triggers the current automatic flow without pressing Import or Sync.
+For activity updates while Steady is closed, enable **Activity → Enable background checks** in the updated Android app and grant the separate background health permission. See [Android background activity sync](#android-background-activity-sync). On iPhone, opening the app still triggers health imports and diary sync.
 
 Official sources: [Amazfit Bip Max](https://uk.amazfit.com/products/bip-max), [Zepp background permissions](https://support.amazfit.com/en/amazfit_t-rex_3/docs/CrLzdsYAQonEmPxelbEcpCGbnQc), [Android background health reads](https://developer.android.com/health-and-fitness/health-connect/read-data).
 
@@ -231,6 +231,20 @@ Do not bypass certificate validation. Hosted mode is much less setup if you want
 
 Export from Settings regularly. To back up the server files, stop it and copy `.steady-data/` somewhere private. Restore that folder before restarting; retain the pairing key to keep devices connected. `STEADY_DATA_DIR` can point to a different private directory, but use the same value with start/status/stop.
 
+## Android background activity sync
+
+In the updated phone app, open **Activity → Enable background checks** and grant Health Connect's **Access data in the background** permission. Your Nothing Phone 3a supports the required Android version. Keep your usual hosted/local sync mode selected and signed in/paired; sync the diary once before leaving the app.
+
+- Android WorkManager checks roughly every 15 minutes, reading the latest two days, with a seven-day catch-up on the first check each day. It uses the same local-day boundaries and aggregate measurements as foreground imports.
+- Activity is retained privately on the phone. When internet or the local server is reachable, the worker uploads activity through the existing revision-checked diary endpoint. It preserves food, recipes, manual overrides and other remote changes. No Supabase SQL migration is needed.
+- Background sync applies to **activity**, not unsent food/recipe edits. Open Steady on the device with those edits to sync them.
+- Android controls actual timing. Battery saving, Doze, restricted app battery settings and force-stopping Steady can delay/prevent work. A force-stopped app must be reopened. Ordinary screen-off, switching apps and reboot are supported; a permanent foreground notification is not used.
+- The worker cannot force Zepp to fetch the watch or publish to Health Connect. Grant Zepp its usual Bluetooth/background access too.
+- Credentials and pending activity are encrypted using Android Keystore in app-private, non-backup storage. The native app and worker share refreshed sign-in tokens. Signing out removes the background server configuration; switching sync mode updates it. Clear device data/restore disables background checks.
+- Turn it off with **Activity → Turn off background checks**, or revoke Health Connect's background permission. iPhone background health syncing is not implemented.
+
+The desktop's **Phone health import** timestamp is the last phone import it has received. It is independent of the desktop diary-sync timestamp. No desktop wake-up/Firebase setup is required.
+
 ## Update the app
 
 - **Website:** push changes to the linked branch or run `npx vercel --prod`. Existing users see an update banner. Click **Update app** after saving any open form.
@@ -246,7 +260,7 @@ Before relying on the system, use a small test entry and verify:
 - **Privacy:** signed out, the Supabase diary must be unreadable. If testing a second temporary auth user, it must see only its own diary, never the first user’s row. SQL policies are included but were not executed against a real Supabase project in this workspace.
 - **Offline:** on an online first load wait for caching, close/reopen once, then enable airplane mode and log/edit a food. Reload and verify it remains. Reconnect/open and check sync.
 - **Health:** after Zepp has a known walk, check that it appears in Health Connect, then open Steady. Compare steps/distance and identify whether energy is active or total in the source app. Reopen to check imports replace totals rather than adding them twice. Check the last import timestamp.
-- **Background watch:** return from a walk and leave Zepp/Steady closed for a while. Inspect Health Connect and Zepp to establish what your watch/phone actually publishes automatically. This is separate from Steady’s foreground auto-import.
+- **Background watch:** return from a walk and leave Zepp/Steady closed for a while. Inspect Health Connect and Zepp to establish what your watch/phone actually publishes automatically. With Android background checks enabled, compare the phone/desktop import timestamps after at least one scheduled check. Android may defer it; opening Steady still performs an immediate foreground check.
 - **Notifications:** use Test notification, then set one reminder a few minutes ahead and close the app. Verify delivery offline. Wait for a repeat, then use Skip today and verify only that meal stops. Log another meal and verify its repeats stop. Swiping away should not stop repeats. Check the next-day reset, quiet cutoff and a phone restart too.
 - **Backup:** export JSON, check it contains your entries, and retain it. Restore replaces local records after confirmation and disables sync until you reconnect.
 

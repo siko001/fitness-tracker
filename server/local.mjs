@@ -5,6 +5,7 @@ import { readFile, writeFile, mkdir, rename, stat } from 'node:fs/promises';
 import { resolve, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stateSchema } from '../src/model.ts';
+import { foodSearch } from './food-search.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const dataDir = resolve(process.env.STEADY_DATA_DIR || join(root, '.steady-data'));
@@ -42,6 +43,7 @@ async function handler(req, res) {
       if (origin && origin !== sameOrigin && !allowedOrigins.has(origin)) return json(res, 403, { error: 'Origin not allowed' });
       if (origin) { res.setHeader('Access-Control-Allow-Origin', origin); res.setHeader('Vary', 'Origin'); }
       if (req.method === 'OPTIONS') { res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS'); res.setHeader('Access-Control-Allow-Headers', 'Authorization,Content-Type'); res.writeHead(204); return res.end(); }
+      if (path === '/api/food-search' && req.method === 'GET') { const result = await foodSearch(new URL(req.url, 'http://localhost').searchParams); return json(res, result.status, result.body); }
       if (!authorized(req)) return json(res, 401, { error: 'Pairing key required' });
       if (path === '/api/status' && req.method === 'GET') return json(res, 200, { pid: process.pid, app: 'steady' });
       if (path === '/api/diary' && req.method === 'GET') return json(res, 200, snapshot);

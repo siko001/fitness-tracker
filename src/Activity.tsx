@@ -3,6 +3,7 @@ import { DateSwitcher } from './Dashboard';
 import { healthName, isNative } from './health';
 import { dayActivity, fmt, type State } from './model';
 import { Empty } from './ui';
+import BackgroundActivity from './BackgroundActivity';
 
 export default function Activity({ state, date, setDate, busy, automatic, status, sync, disableAuto, enterTotals }: {
   state: State; date: string; setDate: (date: string) => void; busy: boolean; automatic: boolean;
@@ -12,15 +13,18 @@ export default function Activity({ state, date, setDate, busy, automatic, status
   return <>
     <div className="page-heading"><div><h1>Activity</h1></div><DateSwitcher date={date} onChange={setDate} /></div>
     <section className="card activity-sync">
-      <div className="activity-sync-top"><Watch size={22} /><div><h2>Activity sync</h2><p>{state.lastHealthSync ? `Last import: ${new Date(state.lastHealthSync).toLocaleString('en-GB')}` : isNative ? `Connect ${healthName} to import activity.` : 'Connect health in the phone app.'}</p></div>
+      <div className="activity-sync-top"><Watch size={22} /><div><h2>Activity sync</h2><p>{state.lastHealthSync ? `Health data checked: ${new Date(state.lastHealthSync).toLocaleString('en-GB')}` : isNative ? `Connect ${healthName} to import activity.` : 'Connect health in the phone app.'}</p></div>
         <div className="connection-actions">{isNative && <button className="button primary" disabled={busy} onClick={sync}><RefreshCw size={16} className={busy ? 'spin' : ''} />{busy ? 'Checking…' : automatic ? 'Check activity now' : 'Connect health'}</button>}<button className="button secondary" onClick={enterTotals}>Enter totals</button></div>
       </div>
       {status && <p className="activity-status" role="status">{status}</p>}
+      <BackgroundActivity />
       <details className="help-details"><summary>Sync help</summary>
         <p>Watch → Zepp → {healthName} → Steady. Allow Zepp to share activity, then connect health in the installed phone app.</p>
-        <p>Steady checks the last 7 days on opening and returning to the app, then today and yesterday every 30 seconds while open. Health imports stop when the app is closed. Hosted sync shares the results with your desktop while Steady is open and online.</p>
+        <p>Steady checks the last 7 days on opening and returning to the app, then today and yesterday every 30 seconds while open. Enable background checks in the Android app to import and sync activity about every 15 minutes while closed. Android may delay checks to save battery. The phone must reach your hosted or local server for the desktop to receive updates.</p>
+        <p>The time above is when Steady checked the phone’s health data. Zepp may not have shared the latest watch readings yet; Steady cannot force that transfer. If totals differ, open Zepp and let it sync with the watch.</p>
+        <p>On iPhone, health imports still run only while Steady is open. Food and recipe changes sync while the app is open on either platform. Health checks are separate from diary sync.</p>
         <p>If phone and watch both record steps, check source priority in {healthName}. Detailed routes stay in Zepp.</p>
-        {isNative && automatic && <button className="text-button" onClick={disableAuto}>Turn off automatic activity checks</button>}
+        {isNative && automatic && <button className="text-button" onClick={disableAuto}>Turn off checks while open</button>}
       </details>
     </section>
     <div className="stats-row">

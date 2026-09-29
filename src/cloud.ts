@@ -2,10 +2,11 @@ import { createClient } from '@supabase/supabase-js';
 import { stateSchema, type State } from './model';
 import { initialState, loadState, mutateState, readMetadata } from './storage';
 import { mergeStates, type ConflictChoice } from './merge';
+import { adoptBackgroundSession, configureBackground, nativeAuthStorage } from './native-background';
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-export const cloud = url && key ? createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } }) : null;
+export const cloud = url && key ? createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storage: nativeAuthStorage } }) : null;
 export type SyncMetadata = { userId: string; base: State; syncedAt: string };
 let active: Promise<State> | null = null;
 export async function syncCloud(choice?: ConflictChoice): Promise<State> {
@@ -14,11 +15,13 @@ export async function syncCloud(choice?: ConflictChoice): Promise<State> {
 }
 async function performSync(choice?: ConflictChoice): Promise<State> {
   if (!cloud) throw new Error('Cloud sync is not configured yet. Your records are saved on this device.');
+  await adoptBackgroundSession(cloud);
   const { data: { session } } = await cloud.auth.getSession();
   if (!session) throw new Error('Sign in to sync your devices.');
   const userId = session.user.id;
   const metadata = await readMetadata<SyncMetadata>('sync');
   if (metadata && metadata.userId !== userId) throw new Error('This device has data from a different account. Export a backup and clear local data before switching accounts.');
+  await configureBackground(cloud);
   const base = metadata?.base ?? initialState();
   // The local diary and its merge baseline are committed in one IndexedDB transaction.
   for (let attempt = 0; attempt < 3; attempt++) {

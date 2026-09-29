@@ -7,10 +7,13 @@ A personal food and fitness diary for desktop, Android and iPhone. Food logging,
 ## What is ready
 
 - Log foods by grams; calculate calories, protein, carbohydrate, fat and fibre.
-- An offline library of 24 USDA reference foods, with separate raw/cooked entries and source links. Add your own foods from package labels. Compact rows show 10, 20 or 50 foods at a time; search covers the whole library, including offline. Recipes, food logging and ingredient selection also have bounded result pages.
-- Build recipes from ingredients, specify the finished dish weight and number of servings, then log grams or portions. Past diary entries retain their original nutrition when a recipe changes.
+- An offline starter library of 24 USDA reference foods, with separate raw/cooked entries and source links. Add your own foods from package labels. Compact rows show 10, 20 or 50 foods at a time; search covers the whole library, including offline. Recipes, food logging and ingredient selection also have bounded result pages.
+- Search 12,662 general foods/dishes and online packaged products, preview the source and nutrition, then review/edit before importing. Optional serving weights make slices and sandwiches reusable. [Food import and quick recipe guide](docs/food-import.md).
+- Record an optional eating time for every food entry.
+- Build recipes from ingredients (or paste a list and review all matches at once), specify the finished dish weight and number of servings, then log grams or portions. Past diary entries retain their original nutrition when a recipe changes.
 - Daily diary, calorie/macro totals, weight tracking and 7/30/90/365-day progress views.
 - Native phone integration reads steps, active energy and walking/running distance from Health Connect / Apple Health. Connect once; checks run on opening, returning to the app and every 30 seconds while open.
+- Optional Android background health imports and activity sync about every 15 minutes, including after reboot, with one-time background Health Connect permission. Android may defer work to save battery. No Firebase or new Supabase tables are needed.
 - Optional **phone notifications** at 10:00, 14:00 and 21:00, repeating every 20 minutes until you log or skip that meal for the day. Android uses a rolling native alarm that works offline while closed. Times and the overnight cutoff are editable. An alternative daily check-in is available.
 - Automatic hosted or local sync after edits, on reconnect, on returning to the app and every 30 seconds while open.
 - Three-way sync combines independent changes and asks you to resolve conflicting edits. Export/restore JSON backups.
@@ -31,7 +34,7 @@ Desktop website ←→ your Supabase diary ←→ installed phone app
 
 Food, recipes, diary, profile, weight and imported activity all share the same diary. Sign in to the same personal account on both devices. **The phone needs the native app for health access and scheduled reminders.** Installing the website to your home screen gives offline food logging, but does not grant native health access.
 
-You can log food and try the desktop dashboard before owning a watch. The watch stores activity while away from the phone; Zepp transfers it when reconnected. Steady cannot force Zepp to publish data or guarantee immediate background sync. This version imports health and synchronizes diaries while Steady is open, including when you return to it to log a meal. See the exact behaviour in [the sync guide](docs/deployment.md#what-syncs-automatically).
+You can log food and try the desktop dashboard before owning a watch. The watch stores activity while away from the phone; Zepp transfers it when reconnected. Steady cannot force Zepp to publish data or guarantee immediate background sync. Food/recipe diary edits synchronize while Steady is open. Android can additionally import and upload activity in the background when enabled; iPhone health imports still require the app to be open. See the exact behaviour in [the sync guide](docs/deployment.md#what-syncs-automatically).
 
 ## Run on this computer
 
@@ -67,7 +70,7 @@ The development server is for editing the interface. Use a production build for 
 3. [Install the native Android app](docs/deployment.md#3-install-on-your-nothing-phone-3a).
 4. [Connect Zepp and set up reminders](docs/deployment.md#4-connect-the-watch-when-you-have-it).
 
-Hosted sync requires your own Supabase project, personal auth user and Vercel deployment; no account credentials are committed to this repository. The Android debug APK was successfully built in this workspace with JDK 21 on 28 September 2026. Physical-device health imports and reminders still need verification. The iOS project is prepared but has not been compiled or tested here.
+Hosted sync requires your own Supabase project, personal auth user and Vercel deployment; no account credentials are committed to this repository. The Android debug APK was successfully built in this workspace with JDK 21 on 28 September 2026. Foreground health imports and notifications have been verified on the Nothing Phone 3a. Background operation needs its new permission and the checks in the guide. The iOS project is prepared but has not been compiled or tested here.
 
 ## Data and privacy
 
@@ -99,4 +102,4 @@ Browser tests use installed Google Chrome and a temporary local server on port 4
 | `android/`, `ios/` | Capacitor native projects |
 | `docs/deployment.md` | Deployment, installation, daily use and acceptance checks |
 
-USDA FoodData Central data is public-domain/CC0. The seed library is extracted from SR Legacy, April 2018. To regenerate it, download the official SR Legacy JSON archive and run `python3 scripts/build-food-library.py /path/to/FoodData_Central_sr_legacy_food_json_2018-04.zip`. See [USDA datasets](https://fdc.nal.usda.gov/download-datasets/) and [data licensing](https://fdc.nal.usda.gov/api-guide/).
+USDA FoodData Central data is public-domain/CC0. The starter library is extracted from SR Legacy, April 2018. The expanded import catalog includes SR Legacy and FNDDS; generation instructions and packaged-data licensing are in [the source guide](docs/food-import.md). See [USDA datasets](https://fdc.nal.usda.gov/download-datasets/) and [data licensing](https://fdc.nal.usda.gov/api-guide/).
