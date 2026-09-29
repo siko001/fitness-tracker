@@ -14,6 +14,7 @@ export default function ZeppActivity({ zepp, state, date }: { zepp: ZeppControll
     <p>Watch → Zepp → Steady. The Steady mini app on your watch sends steps directly, bypassing Health Connect’s export delay.</p>
     {zepp.mode !== 'cloud' ? <p>Enable hosted sync in Settings to pair your watch. Your current sync keeps working.</p> : <>
       <p>{paired && connection.enabled ? 'Direct watch steps are used when available. A higher Zepp Health Connect total takes over if the direct relay falls behind. Manual totals still take priority.' : 'Health Connect stays in use while you install and test the watch mini app.'} Calories and distance still come from the phone’s health data.</p>
+      {paired && <p className="muted">New readings appear automatically; no refresh needed. Steady checks every 10 seconds while open.{zepp.checkedAt > 0 && <> Last checked: {new Date(zepp.checkedAt).toLocaleTimeString('en-GB')}.</>}</p>}
       {paired && <div className="zepp-comparison"><p><strong>Direct watch:</strong> {snapshot ? `${fmt(snapshot.steps)} steps` : 'No reading for this date yet'}</p><p><strong>Health Connect:</strong> {health?.steps != null ? `${fmt(health.steps)} steps` : 'No steps for this date yet'}</p>
         {snapshot && <p className="muted">Watch captured: {new Date(snapshot.captured_at).toLocaleString('en-GB')}<br />Server received: {new Date(snapshot.received_at).toLocaleString('en-GB')}</p>}
       </div>}
@@ -31,6 +32,6 @@ export default function ZeppActivity({ zepp, state, date }: { zepp: ZeppControll
       <li>Create pairing here, then paste it into the Steady mini app’s settings inside Zepp. The pairing is shown only once. To replace it, disconnect and pair again.</li>
       <li>Open Steady on the watch and start background sync. Grant step and background-service access on the watch.</li>
       <li>Compare the direct reading above with your watch. Then test with Steady closed and after a Bluetooth disconnect/reconnect before enabling direct totals.</li>
-    </ol><p>The watch attempts delivery about every 15 minutes while its service runs. Zepp, Bluetooth and internet availability can delay it. Only one watch background service can run at a time. Previous days contain only snapshots this mini app actually captured; Health Connect remains the fallback.</p></details>
+    </ol><p>The latest watch mini app sends changed steps about once a minute, with a check every 15 minutes when the count stays unchanged. Zepp, Bluetooth and internet availability can delay it. Only one watch background service can run at a time. Previous days contain only snapshots this mini app actually captured; Health Connect remains the fallback.</p></details>
   </section>;
 }

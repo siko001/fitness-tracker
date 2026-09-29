@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
 
-test('direct watch testing, activation and fallback preserve the stored diary', async ({ page }) => {
+test('direct watch testing, automatic updates, activation and fallback preserve the stored diary', async ({ page }) => {
   const id = '00000000-0000-4000-8000-000000000001';
   const now = new Date().toISOString(), today = now.slice(0, 10);
-  let enabled = false;
+  let enabled = false, watchSteps = 801;
+  await page.clock.install();
   await page.addInitScript(({ id, now, today }) => {
     localStorage.setItem('sb-gpvowddoxzkeopiywvlg-auth-token', JSON.stringify({ access_token: 'test-only-token', refresh_token: 'test-only-refresh', expires_at: 4102444800, expires_in: 3600, token_type: 'bearer', user: { id, aud: 'authenticated', role: 'authenticated', email: 'test@example.invalid' } }));
     const open = indexedDB.open('steady-fitness', 1);
@@ -20,7 +21,7 @@ test('direct watch testing, activation and fallback preserve the stored diary', 
     let body: unknown = [];
     if (url.includes('/auth/')) body = { id, email: 'test@example.invalid' };
     else if (url.includes('zepp_connections')) body = { device_id: id, enabled, revoked_at: null, last_received_at: now };
-    else if (url.includes('zepp_step_days')) body = [{ device_id: id, date: today, steps: 801, captured_at: now, received_at: now }];
+    else if (url.includes('zepp_step_days')) body = [{ device_id: id, date: today, steps: watchSteps, captured_at: now, received_at: now }];
     else if (url.includes('set_zepp_enabled')) { enabled = route.request().postDataJSON().use_direct; body = null; }
     else if (url.includes('save_diary')) body = 1;
     else if (url.includes('/diaries')) body = null;
@@ -33,6 +34,12 @@ test('direct watch testing, activation and fallback preserve the stored diary', 
   await direct.getByRole('button', { name: 'I verified my watch · use direct steps' }).click();
   await expect(page.locator('.stats-row').first()).toContainText('801');
   await expect(page.locator('.stats-row').first()).toContainText('Steps · Direct watch');
+  // A new server snapshot updates both the comparison and main total without navigation or reload.
+  watchSteps = 804;
+  await page.clock.runFor(10000);
+  await expect(direct).toContainText('804 steps');
+  await expect(page.locator('.stats-row').first()).toContainText('804');
+  await expect(direct).toContainText('New readings appear automatically; no refresh needed.');
   const steps = await page.evaluate(() => new Promise<number>(resolve => {
     const open = indexedDB.open('steady-fitness', 1); open.onsuccess = () => {
       const r = open.result.transaction('app').objectStore('app').get('state'); r.onsuccess = () => resolve(r.result.activities[0].steps);

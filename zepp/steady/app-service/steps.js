@@ -7,6 +7,7 @@ import { getPackageInfo } from '@zos/app';
 
 const step = new Step(), time = new Time();
 let queue = [], dirty = false, lastAttempt = 0, lastScheduled = 0, awaitingDelivery = false, port = 0;
+let scheduledDate = '', scheduledSteps = -1;
 const appId = getPackageInfo().appId;
 function capture() {
   // Read date before AND after the counter to avoid labeling yesterday's steps as today.
@@ -16,7 +17,10 @@ function capture() {
   if (date !== again) return;
   const local = Date.UTC(time.getFullYear(), time.getMonth() - 1, time.getDate(), time.getHours(), time.getMinutes(), time.getSeconds());
   const offset = Math.round((local - at) / 60000);
-  queue = enqueue(queue.filter(s => at - s.at < 32 * 86400000), { v: 1, type: 'steps', date, steps, at, offset }); dirty = true;
+  const snapshot = { v: 1, type: 'steps', date, steps, at, offset };
+  if (!validSnapshot(snapshot)) return;
+  queue = enqueue(queue.filter(s => at - s.at < 32 * 86400000), snapshot); dirty = true;
+  return snapshot;
 }
 function persist() {
   if (!dirty) return;
@@ -47,18 +51,24 @@ function receive(_index, buffer, size) {
 function minute() {
   const now = time.getTime();
   // Keep each day's last observed counter, even while phone/Internet is offline.
-  capture(); persist();
-  if (now - lastScheduled >= 15 * 60000 || now < lastScheduled) { lastScheduled = now; awaitingDelivery = true; transmit(); }
+  const snapshot = capture(); persist();
+  if (!snapshot) return;
+  if (snapshot.date !== scheduledDate || snapshot.steps !== scheduledSteps || now - lastScheduled >= 15 * 60000 || now < lastScheduled) schedule(snapshot);
   else if (awaitingDelivery && now - lastAttempt >= 60000) transmit();
 }
-function reconnect(connected) { port = 0; if (connected) { capture(); awaitingDelivery = true; transmit(); } }
+function schedule(snapshot) {
+  if (!snapshot) return;
+  lastScheduled = time.getTime(); scheduledDate = snapshot.date; scheduledSteps = snapshot.steps;
+  awaitingDelivery = true; transmit();
+}
+function reconnect(connected) { port = 0; if (connected) schedule(capture()); }
 function changed() { capture(); }
 AppService({
   onInit() {
     try { const saved = JSON.parse(readFileSync({ path: 'pending.json', options: { encoding: 'utf8' } })); queue = Array.isArray(saved) ? saved.filter(validSnapshot).slice(-32) : []; } catch (_) {}
     createConnect(receive); addListener(reconnect);
     time.onPerMinute(minute); step.onChange(changed);
-    capture(); lastScheduled = time.getTime(); awaitingDelivery = true; transmit();
+    schedule(capture());
   },
   onDestroy() { persist(); step.offChange(changed); time.offPerMinute(minute); removeListener(); disConnect(); },
 });

@@ -8,6 +8,7 @@ import { emptyZepp, zeppDataSchema, type ZeppData } from './zepp';
 export function useZepp(mode: string) {
   const [data, setData] = useState<ZeppData>(emptyZepp), [error, setError] = useState('');
   const [ready, setReady] = useState(false), [busy, setBusy] = useState(false), [pairing, setPairing] = useState('');
+  const [checkedAt, setCheckedAt] = useState(0);
   const generation = useRef(0), currentUser = useRef(''), requestNumber = useRef(0);
   const refresh = useCallback(async () => {
     if (!cloud || mode !== 'cloud') return;
@@ -33,21 +34,21 @@ export function useZepp(mode: string) {
       setError('Direct watch readings are unavailable. Existing health and diary sync continue.'); setReady(false); return;
     }
     const next = zeppDataSchema.parse({ connection: connection.data, snapshots: snapshots.data });
-    setData(next); setError(''); setReady(true); await writeMetadata(`zepp:${user}`, next);
+    setData(next); setError(''); setReady(true); setCheckedAt(Date.now()); await writeMetadata(`zepp:${user}`, next);
   }, [mode]);
   useEffect(() => {
-    generation.current++; currentUser.current = ''; setData(emptyZepp); setPairing(''); setError(''); setReady(false);
+    generation.current++; currentUser.current = ''; setData(emptyZepp); setPairing(''); setError(''); setReady(false); setCheckedAt(0);
     const run = () => { void refresh().catch(() => setError('Could not check direct watch readings. Saved readings remain available.')); };
-    run(); const timer = setInterval(run, 30000);
+    run(); const timer = setInterval(() => { if (document.visibilityState === 'visible') run(); }, 10000);
     const foreground = () => { if (document.visibilityState === 'visible') run(); };
-    window.addEventListener('visibilitychange', foreground); window.addEventListener('online', run);
+    document.addEventListener('visibilitychange', foreground); window.addEventListener('focus', foreground); window.addEventListener('online', run);
     const auth = cloud?.auth.onAuthStateChange((_event, session) => {
-      if (session?.user.id !== currentUser.current) { generation.current++; currentUser.current = ''; setData(emptyZepp); setPairing(''); setReady(false); }
+      if (session?.user.id !== currentUser.current) { generation.current++; currentUser.current = ''; setData(emptyZepp); setPairing(''); setReady(false); setCheckedAt(0); }
       // Avoid calling other Supabase methods inside the auth lock.
       setTimeout(run, 0);
     });
     const native = isNative ? App.addListener('appStateChange', ({ isActive }) => { if (isActive) run(); }) : null;
-    return () => { generation.current++; clearInterval(timer); window.removeEventListener('visibilitychange', foreground); window.removeEventListener('online', run); auth?.data.subscription.unsubscribe(); void native?.then(h => h.remove()); };
+    return () => { generation.current++; clearInterval(timer); document.removeEventListener('visibilitychange', foreground); window.removeEventListener('focus', foreground); window.removeEventListener('online', run); auth?.data.subscription.unsubscribe(); void native?.then(h => h.remove()); };
   }, [refresh]);
   async function action(type: 'pair' | 'enable' | 'disable' | 'revoke') {
     if (!cloud || mode !== 'cloud') return;
@@ -72,6 +73,6 @@ export function useZepp(mode: string) {
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not update direct sync.'); }
     finally { setBusy(false); }
   }
-  return { data: mode === 'cloud' ? data : emptyZepp, error, ready, busy, pairing, mode, action, refresh, hidePairing: () => setPairing('') };
+  return { data: mode === 'cloud' ? data : emptyZepp, error, ready, busy, pairing, checkedAt, mode, action, refresh, hidePairing: () => setPairing('') };
 }
 export type ZeppController = ReturnType<typeof useZepp>;

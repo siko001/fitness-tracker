@@ -1,7 +1,7 @@
 {
   "configVersion": "v3",
   "app": {
-    "appName": "Steady", "appType": "app", "version": { "code": 1, "name": "0.1.0" },
+    "appName": "Steady", "appType": "app", "version": { "code": 2, "name": "0.1.1" },
     "icon": "icon.png", "vender": "Steady", "description": "Direct watch steps for your private Steady diary"
   },
   "permissions": ["data:user.hd.step", "device:os.bg_service"],

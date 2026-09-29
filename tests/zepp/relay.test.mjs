@@ -29,7 +29,7 @@ test('pairing rejects insecure endpoints and malformed credentials', () => {
   assert.throws(() => protocol.parsePairing(JSON.stringify({ ...config, url: 'http://example.com' })));
   assert.throws(() => protocol.parsePairing(JSON.stringify({ ...config, token: 'short' })));
 });
-test('watch service runs without timers, retries lost delivery, keeps day boundaries and schedules at 15 minutes', () => {
+test('watch sends changed totals on the next minute, keeps quiet totals at 15 minutes, retries and handles rollover without timers', () => {
   let service, minute, changed, receive, reconnect, now = sample.at, steps = 801;
   let connected = true, sent = [], writes = 0;
   const date = () => new Date(now + 120 * 60000);
@@ -51,7 +51,9 @@ test('watch service runs without timers, retries lost delivery, keeps day bounda
   service.onInit(); assert.equal(sent[0].type, 1); // runtime handshake
   incoming(1); assert.equal(protocol.decode(sent.at(-1).payload).steps, 801); confirm();
   sent = [];
-  for (let i = 0; i < 14; i++) { now += 60000; steps++; changed(); minute(); }
+  steps += 3; changed(); assert.equal(sent.length, 0);
+  now += 60000; minute(); assert.equal(protocol.decode(sent.at(-1).payload).steps, 804); confirm(); sent = [];
+  for (let i = 0; i < 14; i++) { now += 60000; minute(); }
   assert.equal(sent.length, 0); now += 60000; minute(); assert.equal(sent.length, 1);
   now += 60000; minute(); assert.equal(sent.length, 2); // no acknowledgement
   confirm(); sent = []; connected = false; reconnect(false);

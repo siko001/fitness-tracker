@@ -48,7 +48,9 @@ On the phone:
 
 ## Delivery and offline limits
 
-The watch service uses low-power Time and Step events, not global timers or 600 ms one-shot alarms. It attempts a scheduled upload about every 15 minutes, and immediately on start/reconnection. An unacknowledged delivery retries on minute events. Small packets use the official sample's device-side BLE routing envelope; Zepp's phone runtime handles that envelope before delivering the payload to the Side Service.
+Watch mini app 0.1.1 uses low-power Time and Step events, not global timers or 600 ms one-shot alarms. Changed step totals and day rollover are sent on the next minute event; when the count stays unchanged, it sends a check about every 15 minutes. It also sends immediately on start/reconnection. An unacknowledged delivery retries on minute events. Small packets use the official sample's device-side BLE routing envelope; Zepp's phone runtime handles that envelope before delivering the payload to the Side Service.
+
+Steady checks for new direct snapshots every 10 seconds while visible and immediately on focus, foreground/resume and network recovery. Main totals and comparison readings update without a page refresh. The last-check time shows the app polling, while capture/receive times describe the watch snapshot. Zepp and Bluetooth availability can extend these intervals. The original watch mini app 0.1.0 keeps its 15-minute schedule until updated through a new preview QR.
 
 The watch keeps the latest observed reading for up to 32 days. It checkpoints on minute events using temporary-file/rename persistence; service writes may fail while the screen is on and are retried when allowed. The phone Side Service also persists pending daily readings and retries on startup, incoming packets and minute timers while Zepp lets it run. The watch only discards a snapshot after the server acknowledged it. In-flight acknowledgements cannot erase newer readings.
 
@@ -63,7 +65,7 @@ npm run build
 npm run test:e2e -- tests/browser/zepp.spec.ts
 ```
 
-The PostgreSQL tests use PGlite and isolated fake accounts; they never write test steps into Neil's production diary. Coverage includes account isolation, column grants, token rotation/revocation, enable gating, duplicate and out-of-order delivery, timestamp/range limits and delayed local-day offsets. Watch simulations exercise no-timer scheduling, retry, acknowledgement and rollover. The browser test checks 706 → 801 activation, fallback, layout and unchanged stored diary.
+The PostgreSQL tests use PGlite and isolated fake accounts; they never write test steps into Neil's production diary. Coverage includes account isolation, column grants, token rotation/revocation, enable gating, duplicate and out-of-order delivery, timestamp/range limits and delayed local-day offsets. Watch simulations exercise minute delivery of changed steps, quiet 15-minute checks, retry, acknowledgement and rollover without global timers. The browser test checks 706 → 801 activation, a further 804-step server reading appearing automatically without navigation/reload, fallback, layout and unchanged stored diary.
 
 Before calling the integration proven, record actual watch/Zepp/Steady counts and timestamps for:
 
