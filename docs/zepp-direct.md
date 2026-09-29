@@ -38,7 +38,7 @@ Sign in with the Zepp account that owns that app ID. Preview creates an installa
 
 The target is square-screen API level 3.0+, including the Bip Max. It intentionally uses Zepp's documented **390×450 compatibility drawing area**. The compiler emits a Bip Max 432×514 ZPS package as well. No unverified newer firmware API is required. Check the actual API level under Zepp Developer Mode → Device information before installing.
 
-Watch 0.1.2 sizes and centres widgets from `getDeviceInfo()`'s drawing area, so panel-size scaling cannot shift the compatibility layout. Its Checked/Delivered times read a service status file saved while the screen is off; reopen the page to inspect the last saved status. These are diagnostics, not a reason to keep the app open.
+The Bip Max preview in watch 0.1.3 centres controls in its documented 390×450 compatibility drawing area without a device-information permission. Version 0.1.2 added an undeclared `getDeviceInfo()` call before rendering and caused a blank screen; do not install that version. Checked/Delivered times read a service status file saved while the screen is off; reopen the page to inspect the last saved status. These are diagnostics, not a reason to keep the app open.
 
 On the phone:
 

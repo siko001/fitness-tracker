@@ -44,7 +44,7 @@ function message(buffer) {
 function changed(event) { if (event.key === 'pairing') void flush(); }
 AppSideService({
   onInit() {
-    console.log('Steady: phone relay started 0.1.2');
+    console.log('Steady: phone relay started 0.1.3');
     try { const saved = JSON.parse(storage().getItem('pending')); pending = Array.isArray(saved) ? saved.filter(validSnapshot).slice(-32) : []; } catch (_) {}
     messaging.peerSocket.addListener('message', message);
     storage().addListener('change', changed);

@@ -98,17 +98,22 @@ test('phone relay releases a stalled fetch, retries queued steps and ignores lat
   assert.ok(values.get('lastWatchContact')); service.onDestroy();
 });
 
-test('watch page centres all widgets in the actual compatibility drawing area', () => {
+test('Bip Max page renders centred controls without device-information permission', () => {
   const code = readFileSync(new URL('../../zepp/steady/page/index.js', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '');
-  for (const [width, height] of [[390, 450], [432, 514]]) {
+  for (const granted of [false, true]) {
+    const width = 390, height = 450;
     let page; const widgets = [];
-    vm.runInNewContext(code, { Page: p => { page = p; }, getDeviceInfo: () => ({ width, height }),
+    // The native runtime rejects undeclared device-info access before the first
+    // widget. Simulate that permission boundary, including first-install state.
+    vm.runInNewContext(code, { Page: p => { page = p; }, getDeviceInfo: () => { throw Error('Device-information permission denied'); },
       createWidget: (_kind, options) => { widgets.push(options); return { setProperty() {} }; }, widget: {}, prop: {}, align: {},
       Step: class { getCurrent() { return 100; } onChange() {} offChange() {} },
-      getAllAppServices: () => ['app-service/steps'], queryPermission: () => [2],
+      getAllAppServices: () => granted ? ['app-service/steps'] : [], queryPermission: () => [granted ? 2 : 0],
       readFileSync() { throw Error('No diagnostic file'); },
     });
     page.build();
+    assert.equal(widgets.length, 5);
+    assert.ok(widgets.some(w => w.text === 'Start sync')); assert.ok(widgets.some(w => w.text === 'Stop sync'));
     for (const w of widgets) { assert.ok(Math.abs(w.x + w.w / 2 - width / 2) <= 0.5); assert.ok(w.x >= 0 && w.x + w.w <= width); assert.ok(w.y >= 0 && w.y + w.h <= height); }
     page.onDestroy();
   }

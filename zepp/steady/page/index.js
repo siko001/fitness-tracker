@@ -2,15 +2,15 @@ import { createWidget, widget, prop, align } from '@zos/ui';
 import { Step } from '@zos/sensor';
 import { start, stop, getAllAppServices } from '@zos/app-service';
 import { queryPermission, requestPermission } from '@zos/app';
-import { getDeviceInfo } from '@zos/device';
 import { readFileSync } from '@zos/fs';
 
 const file = 'app-service/steps', permissions = ['data:user.hd.step', 'device:os.bg_service'];
 Page({
   build() {
-    // Bip Max's compatibility viewport can be 390px while build-time scaling
-    // targets its 432px panel. Centre and scale against the actual drawing area.
-    const { width, height } = getDeviceInfo();
+    // This Bip Max preview uses its documented 390x450 compatibility viewport.
+    // Do not query device information before rendering: that API requires a
+    // separate permission and can prevent the entire page from appearing.
+    const width = 390, height = 450;
     const scale = Math.min(width / 390, height / 450), px = value => Math.round(value * scale);
     const box = (y, w, h) => ({ x: Math.round((width - px(w)) / 2), y: Math.round((height - px(450)) / 2) + px(y), w: px(w), h: px(h) });
     const step = new Step(); let listening = false;

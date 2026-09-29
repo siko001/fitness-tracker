@@ -80,7 +80,7 @@ function reconnect(connected) { port = 0; if (connected) schedule(capture()); }
 function changed() { capture(); }
 AppService({
   onInit() {
-    logger.log('Background service started 0.1.2');
+    logger.log('Background service started 0.1.3');
     try { const saved = JSON.parse(readFileSync({ path: 'pending.json', options: { encoding: 'utf8' } })); queue = Array.isArray(saved) ? saved.filter(validSnapshot).slice(-32) : []; } catch (_) {}
     createConnect(receive); addListener(reconnect);
     time.onPerMinute(minute); step.onChange(changed);
