@@ -2,6 +2,10 @@ package com.neil.steady;
 
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.health.connect.TimeInstantRangeFilter;
+import android.health.connect.datatypes.StepsRecord;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -23,6 +27,19 @@ public class SteadyBackgroundHealthPlugin extends Plugin {
         catch (PackageManager.NameNotFoundException e) { return false; }
     }
     private boolean granted() { return available() && getContext().checkSelfPermission(PERMISSION) == PackageManager.PERMISSION_GRANTED; }
+    @PluginMethod public void readWatchSteps(PluginCall call) {
+        if (Build.VERSION.SDK_INT < 34) { call.reject("Watch-only step imports require Android 14 or later."); return; }
+        if (getContext().checkSelfPermission("android.permission.health.READ_STEPS") != PackageManager.PERMISSION_GRANTED) { call.reject("Allow Steady to read steps in Health Connect."); return; }
+        new Thread(() -> {
+            try {
+                LocalDate date = LocalDate.parse(call.getString("date", ""));
+                var range = new TimeInstantRangeFilter.Builder().setStartTime(date.atStartOfDay(ZoneId.systemDefault()).toInstant())
+                    .setEndTime(date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()).build();
+                Long steps = BackgroundHealthWorker.aggregate(getContext(), range, StepsRecord.STEPS_COUNT_TOTAL);
+                call.resolve(new JSObject().put("steps", steps == null ? JSONObject.NULL : steps));
+            } catch (Exception e) { call.reject("Could not read Zepp steps from Health Connect."); }
+        }, "steady-watch-steps").start();
+    }
     @PluginMethod public void status(PluginCall call) {
         try {
             JSONObject state = BackgroundHealthStore.read(getContext());

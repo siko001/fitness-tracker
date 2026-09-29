@@ -280,3 +280,9 @@ Before relying on the system, use a small test entry and verify:
 | Existing data missing on a new URL | Browser storage is per origin. Sign in/pair to sync it, or restore a backup. |
 
 Clearing a device does not erase cloud/server backups or Health Connect. To remove cloud records, delete the diary row or the auth user from your own Supabase dashboard. Sign-out leaves the offline diary; clear device data before sharing that installation.
+
+### Step source
+
+Android imports use only steps written by Zepp (`com.huami.watch.hmwatchmanager`), in both foreground and background checks. Health Connect performs the aggregation with a data-origin filter; Steady does not add raw phone and watch samples. This requires Android 14+ (background access still requires supported Android 15+). iPhone uses Apple Health’s aggregate. Active energy and distance continue to use the health store’s aggregated totals. The saved activity record identifies Zepp as the step source and syncs that label to desktop.
+
+A recent “Health data checked” time means Steady read Health Connect. It does not mean Zepp has uploaded the latest watch records. Zepp controls that transfer; opening Zepp and letting it finish syncing can make newer data available. No desktop connection or USB cable is required for everyday sync.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { offCandidate, offSummary, searchCatalog } from './food-import';
-import { parseIngredientLines } from './quick-ingredients';
+import { appendIngredients, parseIngredientLines } from './quick-ingredients';
 import { entrySchema, foodSchema } from './model';
 import { initialState } from './storage';
 import { mergeStates, SyncConflict } from './merge';
@@ -35,6 +35,12 @@ describe('reviewed food data', () => {
       { name: 'rice', grams: 100 }, { name: 'Chicken', grams: 200 }, { name: 'Olive oil', grams: 10.5 }, { name: 'Basil', grams: undefined }, { name: '1 tin tuna', grams: undefined },
     ]);
   });
+  it('combines identical recipe ingredients without changing nutrition or mutating the original', () => {
+    const food = initialState().foods[0], current = [{ food, grams: 100 }];
+    const different = { ...food, per100: { ...food.per100, kcal: 200 } };
+    const rows = appendIngredients(current, [{ food, grams: 150 }, { food: different, grams: 50 }]);
+    expect(rows).toHaveLength(2); expect(rows[0].grams).toBe(250); expect(rows[1].food.per100.kcal).toBe(200); expect(current[0].grams).toBe(100);
+  });
   it('preserves food provenance and optional serving weights in backups', () => {
     const food = { ...initialState().foods[0], serving: { label: '1 portion', grams: 120 }, estimated: true, importedFrom: { provider: 'usda', recordId: '123', modified: true } };
     expect(foodSchema.parse(food)).toEqual(food);
@@ -54,6 +60,12 @@ describe('background activity merging', () => {
     const merged = mergeStates(base, local, remote);
     expect(merged.activities[0]).toMatchObject({ steps: 200, activeKcal: 9 });
     expect(mergeHealthRecords(remote, [record], '2026-09-29T06:00:00Z').activities[0].steps).toBe(200);
+  });
+  it('does not carry phone-inclusive totals into an empty watch-only result', () => {
+    const base = initialState(), old = { ...record, steps: 579 };
+    const fresh = { ...record, steps: null, stepSource: 'zepp' as const, updatedAt: '2026-09-29T06:15:00Z' };
+    expect(mergeHealthRecords({ ...base, activities: [old] }, [fresh]).activities[0]).toMatchObject({ steps: null, stepSource: 'zepp' });
+    expect(mergeStates(base, { ...base, activities: [old] }, { ...base, activities: [fresh] }).activities[0].steps).toBeNull();
   });
   it('still requires review for conflicting manual edits and retains manual overrides', () => {
     const base = initialState(), manual = { ...record, source: 'manual' as const };

@@ -39,7 +39,7 @@ export const profileSchema = z.object({
 export const activitySchema = z.object({
   date: dateSchema, steps: number.int().max(500000).nullable(),
   activeKcal: number.max(30000).nullable(), distanceKm: number.max(1000).nullable(),
-  source: z.enum(['manual', 'health']), updatedAt: z.string().datetime(),
+  source: z.enum(['manual', 'health']), stepSource: z.enum(['zepp', 'combined']).optional(), updatedAt: z.string().datetime(),
 });
 export const stateSchema = z.object({
   version: z.literal(1), profile: profileSchema,

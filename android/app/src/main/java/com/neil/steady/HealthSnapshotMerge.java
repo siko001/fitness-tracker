@@ -20,7 +20,7 @@ final class HealthSnapshotMerge {
             String id = row.getString("date") + ":health";
             JSONObject old = rows.get(id);
             if (old != null && newer(old.optString("updatedAt"), row.optString("updatedAt"))) continue;
-            if (old != null) for (String field : new String[]{"steps", "activeKcal", "distanceKm"}) if (row.isNull(field)) row.put(field, old.opt(field));
+            if (old != null) for (String field : new String[]{"steps", "activeKcal", "distanceKm"}) if (row.isNull(field) && (!field.equals("steps") || row.optString("stepSource").equals(old.optString("stepSource")))) row.put(field, old.opt(field));
             rows.put(id, row);
         }
         JSONArray merged = new JSONArray(); for (JSONObject row : rows.values()) merged.put(row);

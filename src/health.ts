@@ -1,7 +1,8 @@
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Health, type HealthDataType } from '@capgo/capacitor-health';
 import { daysEnding, localDate, shiftDate, type Activity } from './model';
 
+const watch = registerPlugin<{ readWatchSteps(options: { date: string }): Promise<{ steps: number | null }> }>('SteadyBackgroundHealth');
 const read: HealthDataType[] = ['steps', 'calories', 'distance'];
 export const isNative = Capacitor.isNativePlatform();
 export const healthName = Capacitor.getPlatform() === 'ios' ? 'Apple Health' : 'Health Connect';
@@ -24,13 +25,15 @@ export async function syncHealth(prompt = true, lookbackDays = 7): Promise<{ rec
     const endDate = new Date(shiftDate(date, 1) + 'T00:00:00').toISOString();
     const values = await Promise.allSettled(read.map(async dataType => {
       if (!allowed.includes(dataType)) return null;
+      if (dataType === 'steps' && Capacitor.getPlatform() === 'android') return (await watch.readWatchSteps({ date })).steps;
       const result = await Health.queryAggregated({ dataType, startDate, endDate, bucket: 'day', aggregation: 'sum' });
       if (!result.samples.length) return null;
       return result.samples.reduce((sum, s) => sum + s.value, 0);
     }));
     const value = (i: number) => { const r = values[i]; if (r.status === 'rejected') { incomplete = true; return null; } return r.value; };
     const steps = value(0), activeKcal = value(1), metres = value(2);
-    if ([steps, activeKcal, metres].some(v => v !== null)) records.push({ date, steps: steps === null ? null : Math.round(steps), activeKcal, distanceKm: metres === null ? null : metres / 1000, source: 'health', updatedAt: new Date().toISOString() });
+    const watchChecked = Capacitor.getPlatform() === 'android' && allowed.includes('steps') && values[0].status === 'fulfilled';
+    if (watchChecked || [steps, activeKcal, metres].some(v => v !== null)) records.push({ date, steps: steps === null ? null : Math.round(steps), activeKcal, distanceKm: metres === null ? null : metres / 1000, source: 'health', stepSource: Capacitor.getPlatform() === 'android' ? 'zepp' : undefined, updatedAt: new Date().toISOString() });
   }
   return { records, incomplete };
 }

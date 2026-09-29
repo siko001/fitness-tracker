@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Search } from 'lucide-react';
 import { FoodForm } from './dialogs';
-import { Field } from './ui';
+import { Field, ModalActions } from './ui';
 import { fmt, type Food } from './model';
 import Pagination, { paginate } from './Pagination';
 import { candidateFood, existingImport, getProduct, loadFoodCatalog, nutrientKeys, searchCatalog, searchProducts, type FoodCandidate, type ProductSummary } from './food-import';
@@ -61,18 +61,19 @@ export default function FoodImport({ foods, onSave, onClose }: { foods: Food[]; 
           {nutrientKeys.some(k => candidate.per100[k] == null) && <p className="callout">Missing nutrients stay blank. Complete them from the label before adding.</p>}
         </>}
         {existing && <p className="callout">Already in your library as <strong>{existing.name}</strong>. Edit it from the library.</p>}
-        <div className="form-actions"><button className="button secondary" onClick={onClose}>Cancel</button><button className="button primary" disabled={!!existing || !!candidate.blockedReason} onClick={() => setEditing(true)}>Review & add</button></div>
+        <ModalActions><button className="button secondary" onClick={onClose}>Cancel</button><button className="button primary" disabled={!!existing || !!candidate.blockedReason} onClick={() => setEditing(true)}>Review & add</button></ModalActions>
       </>}
     </> : <>
-      <div className="segmented">{(['general', 'packaged'] as const).map(t => <button type="button" key={t} aria-pressed={tab === t} className={tab === t ? 'selected' : ''} onClick={() => { resetRequest(); setTab(t); setSearched(''); setError(''); setBusy(false); setPage(1); }}>{t === 'general' ? 'General foods' : 'Packaged products'}</button>)}</div>
+      <div className="import-search-controls"><div className="segmented">{(['general', 'packaged'] as const).map(t => <button type="button" key={t} aria-pressed={tab === t} className={tab === t ? 'selected' : ''} onClick={() => { resetRequest(); setTab(t); setSearched(''); setError(''); setBusy(false); setPage(1); }}>{t === 'general' ? 'General foods' : 'Packaged products'}</button>)}</div>
       <form className="import-search" onSubmit={e => { e.preventDefault(); void search(); }}><div className="search-box"><Search size={18} /><input autoFocus aria-label="Search food sources" maxLength={100} value={query} onChange={e => setQuery(e.target.value)} placeholder={tab === 'general' ? 'e.g. carrot cake, rice, tuna…' : 'Product name or barcode…'} /></div><button className="button primary" disabled={busy || query.trim().length < 2}>{busy ? 'Searching…' : 'Search'}</button></form>
-      <p className="import-note">{tab === 'general' ? 'USDA reference foods & dishes · available offline after download' : 'Open Food Facts · internet needed · search by name or type a barcode'}</p>
+      <p className="import-note">{tab === 'general' ? 'USDA foods & dishes · offline after download' : 'Open Food Facts · online'}</p></div>
       {error && <p className="form-error" role="alert">{error}</p>}
       {busy && <p role="status" className="muted">Loading food information…</p>}
       {searched && !busy && <>
         <div className="import-results">{tab === 'general' ? results.items.map(f => <button className="import-result" key={f.id} onClick={() => choose(f)}><span><strong>{f.name}</strong><small>{f.source} · {f.preparation}</small></span><span>{fmt(f.per100.kcal!)} kcal<small>per 100 g · Preview →</small></span></button>) : products.map(p => <button className="import-result" key={p.code} onClick={() => void preview(p.code)}><span><strong>{p.name}</strong><small>{p.brand || 'Brand not listed'} {p.quantity}</small><small>{p.code}</small></span><span>Preview →</span></button>)}</div>
-        {tab === 'general' ? results.total ? <Pagination {...results} label="Import search pages" onChange={setPage} /> : <p className="callout">No matches. Try fewer words, a common ingredient name, or Packaged products.</p> : products.length ? <div className="import-paging"><button className="button secondary" disabled={page <= 1} onClick={() => void search(page - 1)}>Previous</button><span>Page {page}</span><button className="button secondary" disabled={!more} onClick={() => void search(page + 1)}>Next</button></div> : <p className="callout">No products found. Try the barcode or add values from the label.</p>}
+        <ModalActions className="import-footer-actions">{tab === 'general' ? results.total ? <Pagination {...results} label="Import search pages" onChange={setPage} /> : <p className="callout">No matches. Try fewer words, a common ingredient name, or Packaged products.</p> : products.length ? <div className="import-paging"><button className="button secondary" disabled={page <= 1} onClick={() => void search(page - 1)}>Previous</button><span>Page {page}</span><button className="button secondary" disabled={!more} onClick={() => void search(page + 1)}>Next</button></div> : <p className="callout">No products found. Try the barcode or add values from the label.</p>}<button className="button secondary" onClick={onClose}>Close</button></ModalActions>
       </>}
+      {(!searched || busy) && <ModalActions><button className="button secondary" onClick={onClose}>Close</button></ModalActions>}
       <details className="help-details"><summary>Sources & estimates</summary><p>General foods: <a href="https://fdc.nal.usda.gov/download-datasets/" target="_blank" rel="noreferrer">USDA FoodData Central</a>, SR Legacy April 2018 and FNDDS 2021–2023 (public domain). These are reference recipes, not your café’s exact dish.</p><p>Packaged products: <a href="https://world.openfoodfacts.org" target="_blank" rel="noreferrer">Open Food Facts</a> contributors, <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noreferrer">ODbL</a>. Only your search or barcode is sent. Reviewing or editing here does not change the public source.</p></details>
     </>}
   </div>;

@@ -21,4 +21,10 @@ public class HealthSnapshotMergeTest {
         assertEquals(250, merged.getJSONArray("activities").getJSONObject(1).getInt("steps")); assertEquals(10, merged.getJSONArray("activities").getJSONObject(1).getInt("activeKcal"));
         assertEquals(200, payload.getJSONArray("activities").getJSONObject(1).getInt("steps"));
     }
+    @Test public void doesNotReusePhoneTotalWhenSwitchingToWatchOnly() throws Exception {
+        JSONObject payload = new JSONObject().put("activities", new JSONArray().put(activity("health", 579, "2026-09-29T07:00:00Z")));
+        JSONObject fresh = activity("health", 0, "2026-09-29T07:15:00Z").put("steps", JSONObject.NULL).put("stepSource", "zepp");
+        JSONObject row = HealthSnapshotMerge.merge(payload, new JSONArray().put(fresh), "").getJSONArray("activities").getJSONObject(0);
+        assertTrue(row.isNull("steps")); assertEquals("zepp", row.getString("stepSource"));
+    }
 }

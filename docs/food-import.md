@@ -13,7 +13,9 @@ Imported foods work offline and sync with the rest of the library. General food 
 
 For a café meal, its own nutrition information is the best match. A generic sandwich or cake result is a reference estimate, not a measurement of that café's recipe. Choose a plausible match, check its ingredients/preparation and use your measured portion weight if available.
 
-For more control, open **Recipes → New recipe → Paste several ingredients**:
+Use **Add one** for individual ingredients, or **Paste a list** for several at once. Switching keeps your draft. Identical additions combine their gram weights, and long recipes scroll within the ingredient list.
+
+For more control, open **Recipes → New recipe → Paste a list**:
 
 ```text
 Bread 120 g

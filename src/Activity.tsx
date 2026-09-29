@@ -23,12 +23,12 @@ export default function Activity({ state, date, setDate, busy, automatic, status
         <p>Steady checks the last 7 days on opening and returning to the app, then today and yesterday every 30 seconds while open. Enable background checks in the Android app to import and sync activity about every 15 minutes while closed. Android may delay checks to save battery. The phone must reach your hosted or local server for the desktop to receive updates.</p>
         <p>The time above is when Steady checked the phone’s health data. Zepp may not have shared the latest watch readings yet; Steady cannot force that transfer. If totals differ, open Zepp and let it sync with the watch.</p>
         <p>On iPhone, health imports still run only while Steady is open. Food and recipe changes sync while the app is open on either platform. Health checks are separate from diary sync.</p>
-        <p>If phone and watch both record steps, check source priority in {healthName}. Detailed routes stay in Zepp.</p>
+        <p>Android steps use Zepp watch records only, excluding the phone’s step counter. This needs Android 14 or later. Other measurements use the health store’s totals. Detailed routes stay in Zepp.</p>
         {isNative && automatic && <button className="text-button" onClick={disableAuto}>Turn off checks while open</button>}
       </details>
     </section>
     <div className="stats-row">
-      <div className="card"><p>Steps</p><strong>{activity?.steps != null ? fmt(activity.steps) : '—'}</strong><span>{state.profile.stepGoal ? `Goal: ${fmt(state.profile.stepGoal)}` : 'No goal set'}</span></div>
+      <div className="card"><p>{activity?.stepSource === 'zepp' ? 'Steps · Zepp watch' : 'Steps'}</p><strong>{activity?.steps != null ? fmt(activity.steps) : '—'}</strong><span>{state.profile.stepGoal ? `Goal: ${fmt(state.profile.stepGoal)}` : 'No goal set'}</span></div>
       <div className="card"><p>Active calories</p><strong>{activity?.activeKcal != null ? fmt(activity.activeKcal) : '—'}<small> kcal</small></strong><span>Estimated · excludes resting energy</span></div>
       <div className="card"><p>Walking / running distance</p><strong>{activity?.distanceKm != null ? fmt(activity.distanceKm, 2) : '—'}<small> km</small></strong><span>{activity ? activity.source === 'manual' ? 'Manual entry' : 'Imported' : 'No data yet'}</span></div>
     </div>

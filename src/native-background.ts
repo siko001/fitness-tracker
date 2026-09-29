@@ -62,7 +62,7 @@ export function mergeHealthRecords(state: State, records: Activity[], checked?: 
   for (const old of state.activities.filter(a => a.source === 'health')) {
     const fresh = byDate.get(old.date);
     if (!fresh || Date.parse(old.updatedAt) > Date.parse(fresh.updatedAt)) byDate.set(old.date, old);
-    else byDate.set(old.date, { ...fresh, steps: fresh.steps ?? old.steps, activeKcal: fresh.activeKcal ?? old.activeKcal, distanceKm: fresh.distanceKm ?? old.distanceKm });
+    else byDate.set(old.date, { ...fresh, steps: fresh.steps ?? (fresh.stepSource === old.stepSource ? old.steps : null), activeKcal: fresh.activeKcal ?? old.activeKcal, distanceKm: fresh.distanceKm ?? old.distanceKm });
   }
   const lastHealthSync = checked && (!state.lastHealthSync || Date.parse(checked) > Date.parse(state.lastHealthSync)) ? checked : state.lastHealthSync;
   return { ...state, activities: [...state.activities.filter(a => a.source !== 'health'), ...byDate.values()], lastHealthSync };

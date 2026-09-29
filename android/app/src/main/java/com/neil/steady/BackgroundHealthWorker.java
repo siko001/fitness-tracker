@@ -10,6 +10,7 @@ import android.health.connect.TimeInstantRangeFilter;
 import android.health.connect.datatypes.ActiveCaloriesBurnedRecord;
 import android.health.connect.datatypes.AggregationType;
 import android.health.connect.datatypes.DistanceRecord;
+import android.health.connect.datatypes.DataOrigin;
 import android.health.connect.datatypes.StepsRecord;
 import android.health.connect.datatypes.units.Energy;
 import android.health.connect.datatypes.units.Length;
@@ -69,12 +70,12 @@ public final class BackgroundHealthWorker extends Worker {
                     // Full local-day boundaries preserve Zepp's already-recorded interval totals.
                     TimeInstantRangeFilter range = new TimeInstantRangeFilter.Builder().setStartTime(date.atStartOfDay(ZoneId.systemDefault()).toInstant())
                         .setEndTime(date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()).build();
-                    Long steps = null; Energy energy = null; Length distance = null;
-                    try { if (canRead("STEPS")) steps = aggregate(range, StepsRecord.STEPS_COUNT_TOTAL); else incomplete = true; } catch (Exception e) { incomplete = true; }
-                    try { if (canRead("ACTIVE_CALORIES_BURNED")) energy = aggregate(range, ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL); else incomplete = true; } catch (Exception e) { incomplete = true; }
-                    try { if (canRead("DISTANCE")) distance = aggregate(range, DistanceRecord.DISTANCE_TOTAL); else incomplete = true; } catch (Exception e) { incomplete = true; }
-                    if (steps != null || energy != null || distance != null) records.put(new JSONObject().put("date", date.toString()).put("source", "health").put("updatedAt", now)
-                        .put("steps", steps == null ? JSONObject.NULL : steps).put("activeKcal", energy == null ? JSONObject.NULL : energy.getInCalories() / 1000)
+                    Long steps = null; Energy energy = null; Length distance = null; boolean stepsChecked = false;
+                    try { if (canRead("STEPS")) { steps = aggregate(context, range, StepsRecord.STEPS_COUNT_TOTAL); stepsChecked = true; } else incomplete = true; } catch (Exception e) { incomplete = true; }
+                    try { if (canRead("ACTIVE_CALORIES_BURNED")) energy = aggregate(context, range, ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL); else incomplete = true; } catch (Exception e) { incomplete = true; }
+                    try { if (canRead("DISTANCE")) distance = aggregate(context, range, DistanceRecord.DISTANCE_TOTAL); else incomplete = true; } catch (Exception e) { incomplete = true; }
+                    if (stepsChecked || steps != null || energy != null || distance != null) records.put(new JSONObject().put("date", date.toString()).put("source", "health").put("updatedAt", now)
+                        .put("stepSource", "zepp").put("steps", steps == null ? JSONObject.NULL : steps).put("activeKcal", energy == null ? JSONObject.NULL : energy.getInCalories() / 1000)
                         .put("distanceKm", distance == null ? JSONObject.NULL : distance.getInMeters() / 1000));
                 }
                 synchronized (BackgroundHealthStore.LOCK) {
@@ -95,9 +96,12 @@ public final class BackgroundHealthWorker extends Worker {
         } catch (Exception e) { message("Background check could not finish. It will try again automatically."); return Result.success(); }
     }
     private boolean canRead(String type) { return getApplicationContext().checkSelfPermission("android.permission.health.READ_" + type) == PackageManager.PERMISSION_GRANTED; }
-    private <T> T aggregate(TimeInstantRangeFilter range, AggregationType<T> type) throws Exception {
+    static <T> T aggregate(Context context, TimeInstantRangeFilter range, AggregationType<T> type) throws Exception {
         CompletableFuture<T> result = new CompletableFuture<>();
-        getApplicationContext().getSystemService(HealthConnectManager.class).aggregate(new AggregateRecordsRequest.Builder<T>(range).addAggregationType(type).build(), Runnable::run,
+        var request = new AggregateRecordsRequest.Builder<T>(range).addAggregationType(type);
+        // Neil uses his Amazfit watch as the step source, not the phone counter.
+        if (type.equals(StepsRecord.STEPS_COUNT_TOTAL)) request.addDataOriginsFilter(new DataOrigin.Builder().setPackageName("com.huami.watch.hmwatchmanager").build());
+        context.getSystemService(HealthConnectManager.class).aggregate(request.build(), Runnable::run,
             new OutcomeReceiver<AggregateRecordsResponse<T>, HealthConnectException>() {
                 @Override public void onResult(AggregateRecordsResponse<T> response) { result.complete(response.get(type)); }
                 @Override public void onError(HealthConnectException error) { result.completeExceptionally(error); }

@@ -45,7 +45,7 @@ export function mergeStates(base: State, local: State, remote: State, choice?: C
     activities: rows(base.activities, local.activities, remote.activities, x => `${x.date}:${x.source}`, 'activity', (a, b) => {
       if (a.source !== 'health' || b.source !== 'health') return undefined;
       const [latest, older] = Date.parse(a.updatedAt) >= Date.parse(b.updatedAt) ? [a, b] : [b, a];
-      return { ...latest, steps: latest.steps ?? older.steps, activeKcal: latest.activeKcal ?? older.activeKcal, distanceKm: latest.distanceKm ?? older.distanceKm };
+      return { ...latest, steps: latest.steps ?? (latest.stepSource === older.stepSource ? older.steps : null), activeKcal: latest.activeKcal ?? older.activeKcal, distanceKm: latest.distanceKm ?? older.distanceKm };
     }),
     lastHealthSync: [local.lastHealthSync, remote.lastHealthSync].filter((x): x is string => !!x).sort((a, b) => Date.parse(a) - Date.parse(b)).at(-1) ?? null,
   };

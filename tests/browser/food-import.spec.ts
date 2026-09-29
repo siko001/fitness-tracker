@@ -88,8 +88,14 @@ test('paste ingredients, review sources and amounts, then save a recipe', async 
   await page.goto('/#recipes');
   await page.getByRole('button', { name: 'New recipe', exact: true }).click();
   await page.getByLabel('Recipe name').fill('Work lunch estimate');
-  await page.getByText('Paste several ingredients', { exact: true }).click();
+  await expect(page.getByLabel('Ingredient', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Paste a list', exact: true }).click();
+  await expect(page.getByLabel('Ingredient', { exact: true })).not.toBeVisible();
   await page.getByLabel('Ingredient list').fill('Olive oil 10 g\nTomato paste 20 g\nCapers');
+  await page.getByRole('button', { name: 'Add one', exact: true }).click();
+  await expect(page.getByLabel('Ingredient list')).not.toBeVisible();
+  await page.getByRole('button', { name: 'Paste a list', exact: true }).click();
+  await expect(page.getByLabel('Ingredient list')).toHaveValue('Olive oil 10 g\nTomato paste 20 g\nCapers');
   await page.getByRole('button', { name: 'Find ingredients', exact: true }).click();
   await expect(page.locator('.quick-row')).toHaveCount(3);
   await expect(page.getByLabel('Grams of Capers')).toHaveValue('');
@@ -106,4 +112,50 @@ test('paste ingredients, review sources and amounts, then save a recipe', async 
   await page.getByRole('button', { name: 'Food library', exact: true }).click();
   await page.getByLabel('Search food library').fill('capers');
   await expect(page.locator('.food-row')).toHaveCount(1);
+});
+
+
+test('long recipes stay compact and repeated ingredients combine', async ({ page }) => {
+  await page.goto('/#recipes');
+  await page.getByRole('button', { name: 'New recipe', exact: true }).click();
+  await page.getByRole('button', { name: 'Add ingredient', exact: true }).click();
+  await page.getByRole('button', { name: 'Add ingredient', exact: true }).click();
+  await expect(page.locator('.ingredient')).toHaveCount(1);
+  await expect(page.locator('.ingredient')).toContainText('200 g');
+  const options = await page.getByLabel('Ingredient', { exact: true }).locator('option').evaluateAll(nodes => nodes.map(n => n.value));
+  for (const id of options.slice(1, 11)) {
+    await page.getByLabel('Ingredient', { exact: true }).selectOption(id);
+    await page.getByRole('button', { name: 'Add ingredient', exact: true }).click();
+  }
+  await expect(page.locator('.ingredient')).toHaveCount(11);
+  const list = page.getByRole('region', { name: 'Recipe ingredients' });
+  expect(await list.evaluate(el => el.scrollHeight > el.clientHeight && el.clientHeight <= 280)).toBe(true);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.screenshot({ path: 'test-results/recipe-list-mobile.png' });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('modal header and footer stay visible while food results and form fields scroll', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/#foods');
+  await page.getByRole('button', { name: 'Import food', exact: true }).click();
+  await page.getByLabel('Search food sources').fill('chicken');
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(page.locator('.import-result')).toHaveCount(10);
+  const header = await page.locator('.modal-header').boundingBox(), footer = await page.locator('.modal-footer').boundingBox();
+  const body = page.locator('.modal-body');
+  expect(await body.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+  await body.evaluate(el => el.scrollTop = el.scrollHeight);
+  expect((await page.locator('.modal-header').boundingBox())!.y).toBe(header!.y);
+  expect((await page.locator('.modal-footer').boundingBox())!.y).toBe(footer!.y);
+  await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeInViewport();
+  await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeInViewport();
+  await page.screenshot({ path: 'test-results/import-fixed-mobile.png' });
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('button', { name: 'New food', exact: true }).click();
+  await body.evaluate(el => el.scrollTop = el.scrollHeight);
+  await expect(page.getByRole('button', { name: 'Create food', exact: true })).toBeInViewport();
+  await expect(page.getByRole('button', { name: 'Close dialog', exact: true })).toBeInViewport();
 });
