@@ -34,6 +34,11 @@ test('conversational follow-up uses saved match and strict output without mixing
   assert.equal(response.items[0].grams, 180); assert.equal(response.items[0].food.per100.kcal, 250);
   assert.equal(requests.at(-1).response_format.json_schema.strict, true); assert.equal(requests.at(-1).tools, undefined);
   assert(requests[1].messages.some(m => m.role === 'tool' && m.content.includes('Panina')));
+  assert(requests.at(-1).messages.every(m => m.role !== 'tool' && !m.tool_calls && !m.tool_call_id));
+  assert(requests.at(-1).messages.some(m => m.content.includes('Food lookup result') && m.content.includes('food:panina')));
+  assert(requests[0].tools.every(t => t.function.name !== 'research_menu'));
+  const schema = JSON.stringify(requests.at(-1).response_format.json_schema.schema);
+  assert(!/"(?:format|minLength|maxLength|minimum|exclusiveMinimum|maximum|maxItems)"/.test(schema));
 });
 test('unauthenticated callers cannot spend a configured server key or learn it', async () => {
   const req = { method: 'POST', headers: { 'content-type': 'application/json', host: 'example.com' }, body: { messages: [{ role: 'user', content: 'hello' }], foods: [], recipes: [] } };
@@ -42,7 +47,45 @@ test('unauthenticated callers cannot spend a configured server key or learn it',
   assert.equal(res.statusCode, 401); assert(!res.body.includes('private-server-key'));
 });
 test('provider failure bodies and credentials never reach the client', async () => {
-  await assert.rejects(() => foodAssistant({ foods: [], recipes: [], draft: [], messages: [{ role: 'user', content: 'a ftira' }] }, { apiKey: 'private-key', fetcher: async () => new Response('echo private-key', { status: 401 }) }), error => error.message === 'Groq did not accept this API key.');
+  const reports = [];
+  await assert.rejects(() => foodAssistant({ foods: [], recipes: [], draft: [], messages: [{ role: 'user', content: 'a ftira' }] }, { apiKey: 'private-key', report: d => reports.push(d), fetcher: async () => new Response('echo private-key', { status: 401 }) }), error => error.message === 'Groq did not accept this API key.');
+  assert.deepEqual(reports, [{ provider: 'groq', status: 401, stage: 'lookup', category: 'request_failed' }]);
+});
+
+const basicRequest = { apiKey: 'not-a-real-key-for-test', foods: [], recipes: [], messages: [{ role: 'user', content: 'A tuna ftira from Panina' }] };
+test('schema rejection falls back once to JSON mode with full server validation', async () => {
+  for (const invalid of [false, true]) {
+    const requests = [], reports = [];
+    const execute = () => foodAssistant(basicRequest, { report: d => reports.push(d), fetcher: async (_, options) => {
+      const body = JSON.parse(options.body); requests.push(body);
+      if (requests.length === 1) return Response.json({ choices: [{ message: { content: 'What size?' }, finish_reason: 'stop' }] });
+      if (body.response_format.type === 'json_schema') return Response.json({ error: { code: 'invalid_request_error', message: 'response_format schema unsupported. secret-key-and-food-text', failed_generation: 'private-key' } }, { status: 400 });
+      assert.equal(body.response_format.type, 'json_object');
+      assert(body.messages.at(-1).content.includes('JSON object'));
+      return Response.json({ choices: [{ message: { content: JSON.stringify(invalid ? { reply: 'Bad portion', items: [{ ...item, grams: -1 }] } : { reply: 'Whole or half?', items: [] }) }, finish_reason: 'stop' }] });
+    } });
+    if (invalid) await assert.rejects(execute);
+    else assert.equal((await execute()).reply, 'Whole or half?');
+    assert.equal(requests.length, 3);
+    assert.deepEqual(reports, [{ provider: 'groq', status: 400, stage: 'proposal', category: 'schema_rejected' }]);
+  }
+});
+test('malformed generated tool calls retry once; auth and quota failures do not retry', async () => {
+  for (const status of [400, 401, 429]) {
+    let calls = 0;
+    const execute = () => foodAssistant(basicRequest, { report() {}, fetcher: async () => {
+      calls++;
+      if (calls === 1) return Response.json({ error: { code: 'tool_use_failed', message: 'do not echo this', failed_generation: 'do not execute this' } }, { status });
+      return Response.json({ choices: [{ message: { content: calls === 2 ? 'What size?' : JSON.stringify({ reply: 'Whole or half?', items: [] }) }, finish_reason: 'stop' }] });
+    } });
+    if (status === 400) { assert.equal((await execute()).items.length, 0); assert.equal(calls, 3); }
+    else { await assert.rejects(execute); assert.equal(calls, 1); }
+  }
+});
+test('unknown provider errors expose only a fixed category, stage and status', async () => {
+  const reports = [];
+  await assert.rejects(() => foodAssistant(basicRequest, { report: d => reports.push(d), fetcher: async () => Response.json({ error: { code: 'private-key', message: 'private meal', failed_generation: 'private-key' } }, { status: 400 }) }), error => error.message === 'Groq rejected the food lookup (400 · request_failed). Your draft is safe.');
+  assert.deepEqual(reports, [{ provider: 'groq', status: 400, stage: 'lookup', category: 'request_failed' }]);
 });
 test('packaged follow-ups restore source nutrition rather than trusting the previous draft', async () => {
   const draft = { ...item, ref: 'off:3017620422003', brand: 'Test Brand', name: 'Test tuna', grams: 50 };

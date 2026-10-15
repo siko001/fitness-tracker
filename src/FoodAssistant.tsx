@@ -67,7 +67,7 @@ export default function FoodAssistant({ state, date, meal: initialMeal, libraryO
   }
   return <div className="food-assistant">
     {!messages.length && <div className="assistant-intro"><Sparkles size={24} /><h3>Tell me what you ate.</h3><p>Describe a meal, paste a list, or talk through a portion.</p><button type="button" className="assistant-example" onClick={() => setInput('I’m eating a tuna ftira from Panina in Malta. Help me log it.')}>“A tuna ftira from Panina”</button></div>}
-    <details className="assistant-setup" open={!configured && !key}><summary>Groq connection {configured || key ? '· ready' : '· add your key'}</summary>
+    <details className="assistant-setup" open={!configured && !key}><summary>Groq connection {key ? '· session key added' : configured ? '· server configured' : '· add your key'}</summary>
       <Field label="Groq API key" hint="Kept only for this session. Sent through your server to Groq; never saved in your diary."><input type="password" autoComplete="off" spellCheck={false} value={key} placeholder={configured ? 'Server key configured' : 'gsk_…'} onChange={e => { setKey(e.target.value); setAssistantKey(e.target.value); }} /></Field>
       <p className="muted">For permanent setup, use GROQ_API_KEY and GROQ_ALLOWED_USER_IDS on Vercel. <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">Get a key ↗</a></p>
     </details>
