@@ -208,3 +208,55 @@
 .zepp-pairing { margin-top: 16px; }
 .zepp-pairing textarea { display: block; width: 100%; min-height: 96px; font-size: 12px; overflow-wrap: anywhere; margin-top: 8px; }
 .zepp-sync li { margin: 8px 0; line-height: 1.5; }
+
+.assistant-entry { width: 100%; margin-bottom: 18px; }
+.assistant-intro { text-align: center; padding: 10px 0 18px; }
+.assistant-intro > svg { color: var(--accent-text, var(--green)); margin-bottom: 12px; }
+.assistant-intro h3 { font-size: 20px; }
+.assistant-intro p, .assistant-setup p { color: var(--muted); font-size: 12px; }
+.assistant-example { background: transparent; color: var(--accent-text, var(--green)); padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
+.assistant-setup { border: 1px solid var(--line); padding: 12px; border-radius: 8px; margin-bottom: 16px; }
+.assistant-setup summary, .assistant-food summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+.assistant-setup .field { margin: 12px 0; }
+.assistant-message { margin: 12px 0; padding: 12px 14px; background: var(--surface-soft, #f2f4ed); border-radius: 10px; }
+.assistant-message.user { margin-left: 30px; border: 1px solid var(--line); background: transparent; }
+.assistant-message small { color: var(--muted); font-size: 10px; font-weight: 600; }
+.assistant-message p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; margin: 6px 0 0; }
+.assistant-review { margin-top: 22px; }
+.assistant-review > h3 { font-size: 14px; margin-bottom: 14px; }
+.assistant-food { border: 1px solid var(--line); border-radius: 9px; padding: 14px; margin-bottom: 12px; }
+.assistant-food-heading { display: flex; gap: 12px; align-items: start; justify-content: space-between; }
+.assistant-food-heading strong { font-size: 14px; line-height: 1.5; }
+.assistant-food-heading small { display: block; color: var(--muted); font-size: 12px; margin-top: 4px; }
+.assistant-food-status { font-size: 11px; color: var(--muted); margin: 8px 0 14px; }
+.assistant-portion { display: flex; align-items: center; gap: 16px; }
+.assistant-portion .field { flex: 1; min-width: 0; }
+.assistant-portion > strong { font-size: 18px; white-space: nowrap; }
+.assistant-food details p { font-size: 12px; overflow-wrap: anywhere; }
+.assistant-footer { display: flex; flex-direction: column; gap: 12px; }
+.assistant-footer textarea { width: 100%; min-height: 54px; max-height: 100px; resize: vertical; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font: inherit; font-size: 14px; color: var(--ink); background: transparent; }
+.assistant-send, .assistant-save { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; }
+.assistant-send .button { padding: 8px 14px; }
+.assistant-web { margin: 10px 0 0; font-size: 11px; align-items: center; gap: 7px; flex-wrap: wrap; }
+.assistant-web span { color: var(--muted); }
+.assistant-save { border-top: 1px solid var(--line); padding-top: 12px; margin: 0; }
+.modal:has(.food-assistant) .modal-footer { max-height: 55dvh; overflow-y: auto; }
+.assistant-disclosure { font-size: 10px; color: var(--muted); line-height: 1.5; margin: 8px 0 0; }
+@media (max-height: 600px) {
+  .assistant-footer { gap: 6px; }
+  .assistant-footer form { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
+  .assistant-footer textarea { min-height: 42px; max-height: 50px; }
+  .assistant-send { margin: 0; gap: 6px; }
+  .assistant-send .button { padding: 6px 9px; }
+  .assistant-web { grid-column: 1 / -1; margin: 0; }
+  .assistant-disclosure { display: none; }
+  .assistant-save { padding-top: 6px; }
+}
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+@media(max-width:680px) {
+  .assistant-footer textarea { font-size: 16px; }
+  .assistant-intro { padding: 0; }
+  .assistant-intro p { margin-bottom: 10px; }
+  .assistant-portion { gap: 12px; }
+  .assistant-portion > strong { font-size: 16px; }
+}

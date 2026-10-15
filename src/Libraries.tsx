@@ -4,21 +4,21 @@ import { fmt, recipeTotals, type Food, type Recipe, type State } from './model';
 import { Empty } from './ui';
 import Pagination, { matchesSearch, paginate } from './Pagination';
 
-export function FoodLibrary({ state, add, importFood, edit, log }: { state: State; add: () => void; importFood: () => void; edit: (f: Food) => void; log: (f: Food) => void }) {
+export function FoodLibrary({ state, add, importFood, assistant, edit, log }: { state: State; add: () => void; importFood: () => void; assistant: () => void; edit: (f: Food) => void; log: (f: Food) => void }) {
   const [query, setQuery] = useState(''), [category, setCategory] = useState('All foods');
   const [page, setPage] = useState(1), [pageSize, setPageSize] = useState(20);
-  const foods = state.foods.filter(f => matchesSearch(`${f.name} ${f.preparation} ${f.group}`, query) && (category === 'All foods' || category === 'My foods' && f.custom || f.group === category))
+  const foods = state.foods.filter(f => matchesSearch(`${f.name} ${f.brand || ''} ${f.preparation} ${f.group}`, query) && (category === 'All foods' || category === 'My foods' && f.custom || f.group === category))
     .sort((a, b) => a.name.localeCompare(b.name) || a.preparation.localeCompare(b.preparation) || a.id.localeCompare(b.id));
   const result = paginate(foods, page, pageSize);
   const changePage = (next: number) => { setPage(next); window.scrollTo({ top: 0, behavior: 'instant' }); };
   return <>
-    <div className="page-heading"><div><h1>Food library</h1></div><div className="heading-actions"><button className="button secondary" onClick={importFood}><Download size={17} />Import food</button><button className="button primary" onClick={add}><Plus size={18} />New food</button></div></div>
+    <div className="page-heading"><div><h1>Food library</h1></div><div className="heading-actions"><button className="button secondary" onClick={assistant}>Find foods with AI</button><button className="button secondary" onClick={importFood}><Download size={17} />Import food</button><button className="button primary" onClick={add}><Plus size={18} />New food</button></div></div>
     <div className="library-tools"><div className="search-box"><Search size={18} /><input aria-label="Search food library" placeholder="Search foods…" value={query} onChange={e => { setQuery(e.target.value); setPage(1); }} /></div><select aria-label="Food category" value={category} onChange={e => { setCategory(e.target.value); setPage(1); }}>{['All foods', 'My foods', 'Protein', 'Grains', 'Vegetables', 'Fruit', 'Dairy', 'Fats', 'Other'].map(c => <option key={c}>{c}</option>)}</select></div>
     <Pagination {...result} label="Food library pages" onChange={changePage} pageSize={pageSize} onPageSize={size => { setPageSize(size); setPage(1); }} />
     {foods.length ? <section className="card food-list" aria-label="Foods">
       <div className="food-list-heading"><span>Food</span><span>Per 100 g</span></div>
       {result.items.map(f => <article className="food-row" key={f.id}>
-        <div className="food-row-name"><h2>{f.name}</h2><div><span className="tag">{f.preparation}</span><span>{f.group}</span>{f.estimated && <span>· Estimate</span>}{f.custom && <span>· My food</span>}</div></div>
+        <div className="food-row-name"><h2>{f.name}</h2>{f.brand && <p className="muted">{f.brand}</p>}<div><span className="tag">{f.preparation}</span><span>{f.group}</span>{f.estimated && <span>· Estimate</span>}{f.custom && <span>· My food</span>}</div></div>
         <div className="food-row-energy"><strong>{fmt(f.per100.kcal)}</strong><span>kcal</span></div>
         <div className="food-row-macros">{(['protein', 'carbs', 'fat'] as const).map(key => <span key={key}><small>{key.charAt(0).toUpperCase() + key.slice(1)}</small>{fmt(f.per100[key], 1)} g</span>)}</div>
         <div className="food-row-actions">{f.custom ? <button className="icon-button" aria-label={`Edit ${f.name}`} title="Edit food" onClick={() => edit(f)}><Pencil size={16} /></button> : null}{f.sourceUrl && <a href={f.sourceUrl} target="_blank" rel="noreferrer" className="source-link" aria-label={`Source for ${f.name} ${f.preparation}`}>Source ↗</a>}<button className="round-add" aria-label={`Log ${f.name} ${f.preparation}`} title="Log food" onClick={() => log(f)}><Plus size={19} /></button></div>

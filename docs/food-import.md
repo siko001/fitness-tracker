@@ -44,3 +44,19 @@ python3 scripts/build-import-catalog.py /path/to/FoodData_Central_sr_legacy_food
 Packaged search uses Search-a-licious `/search`; preview uses the Open Food Facts v3.6 product endpoint with explicit nutrition units/basis. The public read-only `/api/food-search` route runs on Vercel and in the local Node server. It accepts only a search term/page or barcode, uses fixed upstreams, identifies Steady, caches responses, limits calls and sizes, and times out. It never receives diary records or authentication tokens. The frontend searches only when submitted, with a cooldown. Upstream availability and rate limits still apply. Open Food Facts asks API users to [register their usage](https://openfoodfacts.github.io/openfoodfacts-server/api/#before-you-start); no form was submitted on your behalf.
 
 No new database tables, paid service or API key is needed. Vercel deploys `api/food-search.mjs` with the site. The native build defaults to this project's Vercel URL for packaged search. For another deployment, set `VITE_FOOD_API_URL=https://your-site.vercel.app` before `npm run native:sync`; browser and local-server builds use their own origin. This setting is public, not a secret. A native build can also target a trusted HTTPS local-server origin.
+
+## Conversational food assistant
+
+Open **Food diary → Ask about food**. For example:
+
+> I'm eating a tuna ftira from Panina in Malta.
+> It's about 300 g; an estimate is fine if there is no published nutrition.
+> Actually, I ate half of it, without mayonnaise.
+
+The assistant can ask about size, ingredients and preparation, check saved foods/recipes, look up generic foods or packaged products, and optionally research a menu. A named restaurant is kept separate from a generic dish. Source nutrition is taken from the matched record, not replaced by model-generated numbers. New nutrition supplied by AI is always marked **Estimated**; menu ingredients alone do not verify calories.
+
+Review each proposed food's **Nutrition & source**, edit grams, choose the meal/date/time, tick the review box, then **Save & log meal**. New library foods and diary entries save together; existing matches are reused. Uncheck **Also log what I ate** to save only reusable library foods. Saving logs the proposed foods individually; it does not create a batch recipe. Use the existing recipe builder for cooked yield and servings. Closing the dialog discards the unsaved conversation.
+
+**Find list** resolves pasted lines such as `Chicken breast 200 g` and `Olive oil 10 g` against saved foods and the offline USDA catalog without an AI key. Review the offered matches and enter any missing portion weight. It works offline once the catalog is cached (bundled in the phone app).
+
+**Send** requires internet and a Groq key. The optional menu-research checkbox may use additional Groq quota. Follow [deployment setup](deployment.md#groq-food-assistant-setup) for a permanent server key or enter a temporary session key in the dialog. The library and conversation go to the Steady server; only relevant matches and the conversation go onward to Groq. No profile, activity or weight records are included.

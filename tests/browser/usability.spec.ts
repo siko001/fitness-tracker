@@ -112,9 +112,9 @@ test('profile menu, refresh and back navigation work in a short window', async (
   await expect(page.getByRole('heading', { name: 'Recipes', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Activity', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Activity', exact: true })).toBeVisible();
-  await expect(page.getByText('Watch → Zepp', { exact: false })).not.toBeVisible();
+  await expect(page.getByText('Watch → Zepp → Health Connect', { exact: false })).not.toBeVisible();
   await page.getByText('Sync help', { exact: true }).click();
-  await expect(page.getByText('Watch → Zepp', { exact: false })).toBeVisible();
+  await expect(page.getByText('Watch → Zepp → Health Connect', { exact: false })).toBeVisible();
   await page.goBack();
   await expect(page.getByRole('heading', { name: 'Recipes', exact: true })).toBeVisible();
   await page.goForward();

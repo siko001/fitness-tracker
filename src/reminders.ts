@@ -1,9 +1,10 @@
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { dateSchema, meals, skippedMealSchema, type Meal, type SkippedMeal } from './model';
+import { dateSchema, entrySchema, meals, skippedMealSchema, type Meal, type SkippedMeal } from './model';
 import { defaultReminders, planReminders, reminderNeeded, reminderSchema, type ReminderSettings } from './reminder-plan';
 import { loadState, mutateState, readMetadata, writeMetadata } from './storage';
 import { AndroidMealReminders } from './android-reminders';
+import { mealQuickPicks } from './meal-quick-picks';
 
 const native = Capacitor.isNativePlatform();
 const android = Capacitor.getPlatform() === 'android';
@@ -51,6 +52,14 @@ export function refreshReminders(): Promise<void> {
         window.dispatchEvent(new Event('steady-native-changed'));
       }
     }
+    let pendingEntries: string[] = [];
+    if (android) {
+      const entries = entrySchema.array().parse((await AndroidMealReminders.pendingEntries()).entries);
+      if (entries.length) {
+        await mutateState(s => ({ ...s, entries: [...s.entries, ...entries.filter(e => !s.entries.some(old => old.id === e.id))], skippedMeals: s.skippedMeals.filter(skip => !entries.some(e => e.date === skip.date && e.meal === skip.meal)) }));
+        pendingEntries = entries.map(e => e.id); window.dispatchEvent(new Event('steady-native-changed'));
+      }
+    }
     const state = await loadState();
     const { notifications } = await LocalNotifications.getPending();
     // Keep an explicit test notification intact when an app-resume refresh occurs.
@@ -59,8 +68,9 @@ export function refreshReminders(): Promise<void> {
     const enabled = settings.enabled && (await LocalNotifications.checkPermissions()).display === 'granted';
     if (android) {
       const logged = [...new Map(state.entries.map(e => [`${e.date}:${e.meal}`, { date: e.date, meal: e.meal }])).values()];
-      await AndroidMealReminders.configure({ settings: { ...settings, enabled }, logged, skipped: state.skippedMeals });
+      await AndroidMealReminders.configure({ settings: { ...settings, enabled }, logged, skipped: state.skippedMeals, quickMeals: mealQuickPicks(state) });
       // Native skips stay authoritative until the diary AND native mirror contain them.
+      if (pendingEntries.length) await AndroidMealReminders.acknowledgeEntries({ ids: pendingEntries });
       if (nativeSkips.length) await AndroidMealReminders.acknowledgeSkips({ skips: nativeSkips });
       return;
     }
@@ -86,6 +96,7 @@ export async function testReminder() {
   if (!native) throw new Error('Install the phone app to test a reminder.');
   if ((await LocalNotifications.requestPermissions()).display !== 'granted') throw new Error('Allow notifications in your phone settings first.');
   await notificationChannel();
+  if (android) { await refreshReminders(); await AndroidMealReminders.test(); return; }
   await LocalNotifications.schedule({ notifications: [{ id: 42, title: 'Your Steady reminder 🌿', body: 'This is how your food diary reminders will look.', channelId, isExactNotification: false, schedule: { at: new Date(Date.now() + 5000) }, extra: { test: true } }] });
 }
 export async function consumeAndroidReminder(open: (date: string, meal: Meal) => void) {

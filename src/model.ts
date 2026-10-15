@@ -13,6 +13,9 @@ export const foodSchema = z.object({
   preparation: z.enum(['Raw', 'Cooked', 'Dry', 'Ready to eat']),
   per100: macrosSchema, source: text, sourceUrl: z.string().url().optional(),
   custom: z.boolean(),
+  brand: text.optional(),
+  notes: z.string().max(1200).optional(),
+  researchUrls: z.array(z.string().url()).max(8).optional(),
   serving: z.object({ label: text, grams: number.positive().max(100000) }).optional(),
   estimated: z.boolean().optional(),
   importedFrom: z.object({ provider: z.enum(['usda', 'openfoodfacts']), recordId: id, modified: z.boolean() }).optional(),
@@ -28,6 +31,7 @@ export const entrySchema = z.object({
   id, date: dateSchema, meal: z.enum(meals), name: text, preparation: z.string().max(200),
   grams: number.positive().max(100000), per100: macrosSchema,
   foodId: id.optional(), recipeId: id.optional(),
+  estimated: z.boolean().optional(),
   time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/).optional(),
 });
 export const profileSchema = z.object({

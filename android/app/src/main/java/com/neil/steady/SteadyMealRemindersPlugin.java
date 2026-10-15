@@ -13,7 +13,7 @@ public class SteadyMealRemindersPlugin extends Plugin {
         try {
             JSObject settings = call.getObject("settings");
             if (settings == null) throw new IllegalArgumentException("Settings required");
-            MealReminderEngine.configure(getContext(), settings, call.getArray("logged", new JSArray()), call.getArray("skipped", new JSArray()));
+            MealReminderEngine.configure(getContext(), settings, call.getArray("logged", new JSArray()), call.getArray("skipped", new JSArray()), call.getObject("quickMeals", new JSObject()));
             call.resolve();
         } catch (Exception e) { call.reject("Could not schedule meal reminders", e); }
     }
@@ -28,6 +28,15 @@ public class SteadyMealRemindersPlugin extends Plugin {
     @PluginMethod public void consumeOpen(PluginCall call) {
         try { call.resolve(new JSObject(MealReminderEngine.consumeOpen(getContext()).toString())); }
         catch (Exception e) { call.reject("Could not open meal", e); }
+    }
+    @PluginMethod public void test(PluginCall call) { MealReminderEngine.test(getContext()); call.resolve(); }
+    @PluginMethod public void pendingEntries(PluginCall call) {
+        try { JSObject result = new JSObject(); result.put("entries", MealReminderEngine.pendingEntries(getContext())); call.resolve(result); }
+        catch (Exception e) { call.reject("Could not read watch meals", e); }
+    }
+    @PluginMethod public void acknowledgeEntries(PluginCall call) {
+        try { MealReminderEngine.acknowledgeEntries(getContext(), call.getArray("ids", new JSArray())); call.resolve(); }
+        catch (Exception e) { call.reject("Could not confirm watch meals", e); }
     }
     @PluginMethod public void clear(PluginCall call) {
         MealReminderEngine.clear(getContext()); call.resolve();

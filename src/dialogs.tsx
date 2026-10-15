@@ -16,19 +16,19 @@ function useSubmit(onSave: (value: any) => Promise<void>) {
 }
 
 const nowTime = () => new Date().toTimeString().slice(0, 5);
-type Selection = { id: string; name: string; preparation: string; per100: Macros; foodId?: string; recipeId?: string; servingGrams?: number };
+type Selection = { id: string; name: string; preparation: string; per100: Macros; foodId?: string; recipeId?: string; servingGrams?: number; estimated?: boolean };
 export function LogForm({ state, date, meal, entry, onSave, onClose }: { state: State; date: string; meal: Meal; entry?: Entry; onSave: (e: Entry) => Promise<void>; onClose: () => void }) {
   const [query, setQuery] = useState(''), [tab, setTab] = useState<'Foods' | 'Recipes'>('Foods'), [page, setPage] = useState(1);
   const picker = useRef<HTMLDivElement>(null);
-  const [selection, setSelection] = useState<Selection | null>(entry ? { id: entry.foodId ?? entry.recipeId ?? entry.id, name: entry.name, preparation: entry.preparation, per100: entry.per100, foodId: entry.foodId, recipeId: entry.recipeId, servingGrams: entry.recipeId ? (() => { const r = state.recipes.find(r => r.id === entry.recipeId); return r ? r.yieldGrams / r.servings : undefined; })() : state.foods.find(f => f.id === entry.foodId)?.serving?.grams } : null);
+  const [selection, setSelection] = useState<Selection | null>(entry ? { id: entry.foodId ?? entry.recipeId ?? entry.id, name: entry.name, preparation: entry.preparation, per100: entry.per100, estimated: entry.estimated, foodId: entry.foodId, recipeId: entry.recipeId, servingGrams: entry.recipeId ? (() => { const r = state.recipes.find(r => r.id === entry.recipeId); return r ? r.yieldGrams / r.servings : undefined; })() : state.foods.find(f => f.id === entry.foodId)?.serving?.grams } : null);
   const [amount, setAmount] = useState(String(entry?.grams ?? 100)), [unit, setUnit] = useState('grams');
   const { submit, error, busy } = useSubmit(onSave);
   const grams = Number(amount) * (unit === 'servings' ? selection?.servingGrams ?? 1 : 1);
-  const options: Selection[] = tab === 'Foods' ? state.foods.map(f => ({ ...f, foodId: f.id, servingGrams: f.serving?.grams })) : state.recipes.map(r => ({ id: r.id, recipeId: r.id, name: r.name, preparation: 'Prepared recipe', per100: recipePer100(r), servingGrams: r.yieldGrams / r.servings }));
+  const options: Selection[] = tab === 'Foods' ? state.foods.map(f => ({ ...f, name: f.brand && !f.name.toLowerCase().includes(f.brand.toLowerCase()) ? `${f.name} · ${f.brand}` : f.name, foodId: f.id, servingGrams: f.serving?.grams })) : state.recipes.map(r => ({ id: r.id, recipeId: r.id, name: r.name, preparation: 'Prepared recipe', per100: recipePer100(r), estimated: r.estimated, servingGrams: r.yieldGrams / r.servings }));
   const result = paginate(options.filter(f => matchesSearch(`${f.name} ${f.preparation}`, query)), page, 20);
   function save(e: FormEvent<HTMLFormElement>) {
     const data = formValues(e);
-    void submit(() => { if (!selection) throw new Error('Choose a food or recipe first.'); return entrySchema.parse({ id: entry?.id ?? uid(), date: data.get('date'), meal: data.get('meal'), name: selection.name, preparation: selection.preparation, grams, per100: selection.per100, time: data.get('time') || undefined, foodId: selection.foodId, recipeId: selection.recipeId }); });
+    void submit(() => { if (!selection) throw new Error('Choose a food or recipe first.'); return entrySchema.parse({ id: entry?.id ?? uid(), date: data.get('date'), meal: data.get('meal'), name: selection.name, preparation: selection.preparation, grams, per100: selection.per100, time: data.get('time') || undefined, foodId: selection.foodId, recipeId: selection.recipeId, estimated: selection.estimated }); });
   }
   return <form onSubmit={save}>
     {!selection ? <><div className="segmented">{(['Foods', 'Recipes'] as const).map(t => <button type="button" key={t} className={tab === t ? 'selected' : ''} onClick={() => { setTab(t); setPage(1); picker.current?.scrollTo(0, 0); }}>{t}</button>)}</div><div className="search-box"><Search size={18} /><input autoFocus aria-label="Search foods or recipes" value={query} onChange={e => { setQuery(e.target.value); setPage(1); picker.current?.scrollTo(0, 0); }} placeholder={tab === 'Foods' ? 'Search chicken, rice, beans…' : 'Search your recipes…'} /></div>
@@ -47,7 +47,7 @@ export function FoodForm({ food, importing = false, onSave, onClose }: { food?: 
       const per100 = Object.fromEntries(['kcal', 'protein', 'carbs', 'fat', 'fibre'].map(k => [k, numeric(d, k)]));
       const edited = food && (JSON.stringify(per100) !== JSON.stringify(food.per100) || d.get('name') !== food.name || d.get('preparation') !== food.preparation);
       return foodSchema.parse({ ...food, id: food?.id ?? uid(), name: d.get('name'), group: d.get('group'), preparation: d.get('preparation'), custom: true,
-        source: food?.source ?? 'Your nutrition label', per100, estimated: d.get('estimated') === 'on',
+        source: food?.source ?? 'Your nutrition label', brand: String(d.get('brand') || '').trim() || undefined, per100, estimated: d.get('estimated') === 'on',
         serving: servingGrams === null ? undefined : { label: String(d.get('servingLabel') || '').trim() || '1 serving', grams: servingGrams },
         importedFrom: food?.importedFrom ? { ...food.importedFrom, modified: food.importedFrom.modified || !!edited } : undefined,
       });
@@ -56,6 +56,7 @@ export function FoodForm({ food, importing = false, onSave, onClose }: { food?: 
   return <form onSubmit={save}>
     {!importing && food?.sourceUrl && <div className="import-source"><a href={food.sourceUrl} target="_blank" rel="noreferrer">{food.source} ↗</a>{food.importedFrom?.modified && <small>Locally edited</small>}</div>}
     <Field label="Food name"><input autoFocus name="name" required maxLength={200} defaultValue={food?.name} placeholder="e.g. My favourite chicken breast" /></Field>
+    <Field label="Brand or restaurant · optional"><input name="brand" maxLength={200} defaultValue={food?.brand} placeholder="e.g. Panina" /></Field>
     <div className="form-grid"><Field label="Category"><select name="group" defaultValue={food?.group ?? 'Other'}>{['Protein', 'Grains', 'Vegetables', 'Fruit', 'Dairy', 'Fats', 'Other'].map(g => <option key={g}>{g}</option>)}</select></Field><Field label="Weighed as"><select name="preparation" defaultValue={food?.preparation ?? 'Ready to eat'}>{['Raw', 'Cooked', 'Dry', 'Ready to eat'].map(g => <option key={g}>{g}</option>)}</select></Field></div>
     <div className="callout">Nutrition <strong>per 100 g</strong>.{importing && ' Check the source and fill any missing values.'}</div>
     <div className="form-grid">{(['kcal', 'protein', 'carbs', 'fat', 'fibre'] as const).map(k => <Field key={k} label={k === 'kcal' ? 'Energy (kcal)' : `${k.charAt(0).toUpperCase() + k.slice(1)} (g)`}><input type="number" name={k} min="0" max={k === 'kcal' ? 1000 : 100} step="any" required defaultValue={food?.per100[k] ?? (importing || k === 'kcal' ? '' : 0)} placeholder={importing ? 'Missing — enter from label' : undefined} /></Field>)}</div>

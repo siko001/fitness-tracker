@@ -58,7 +58,7 @@ Official references: [Supabase auth users](https://supabase.com/docs/guides/auth
 6. Go to **Settings & sync → Hosted sync** and sign in using the personal user you created in Supabase. Sync starts automatically.
 7. Save that production URL as your desktop bookmark. Use the same URL when installing the website on other browsers. Different deployment URLs have separate local browser storage; signing in retrieves the shared diary.
 
-`vercel.json` already contains the build/output settings and cache headers. The website is static; Supabase handles the data. No Vercel functions, cron job or paid notification service is required.
+`vercel.json` already contains the build/output settings and cache headers. The interface is static; Supabase handles diary data. Vercel functions provide packaged-food search, the optional Groq assistant and the direct-watch relay. No cron job or paid notification service is required.
 
 ### Without GitHub
 
@@ -288,3 +288,35 @@ Clearing a device does not erase cloud/server backups or Health Connect. To remo
 Android imports use only steps written by Zepp (`com.huami.watch.hmwatchmanager`), in both foreground and background checks. Health Connect performs the aggregation with a data-origin filter; Steady does not add raw phone and watch samples. This requires Android 14+ (background access still requires supported Android 15+). iPhone uses Apple Health’s aggregate. Active energy and distance continue to use the health store’s aggregated totals. The saved activity record identifies Zepp as the step source and syncs that label to desktop.
 
 A recent “Health data checked” time means Steady read Health Connect. It does not mean Zepp has uploaded the latest watch records. Zepp controls that transfer; opening Zepp and letting it finish syncing can make newer data available. No desktop connection or USB cable is required for everyday sync.
+
+## Groq food assistant setup
+
+Use **Food diary → Ask about food**, **Food library → Find foods with AI**, or **Log food → Describe a meal or paste a list**. The assistant keeps the conversation while the dialog is open. You can correct the restaurant, ingredients or portion before reviewing and saving. See [food assistant workflow](food-import.md#conversational-food-assistant).
+
+For a quick trial, enter a key from [Groq Console](https://console.groq.com/keys) in **Groq connection** inside the assistant. This key lasts only for the current app session. Do not paste it into chat or commit it.
+
+For everyday use without entering the key again:
+
+1. In **Vercel → project → Settings → Environment Variables**, add **GROQ_API_KEY** for Production. This is a server secret: **do not prefix it with VITE_**.
+2. In **Supabase → Authentication → Users**, copy your own user's **UUID** (not email, password or project ID). Add it in Vercel as **GROQ_ALLOWED_USER_IDS**. Multiple allowed users can be comma-separated. The function validates the signed-in user with Supabase before using the server key. An empty allowlist permits nobody.
+3. Redeploy the website. Sign into the same Steady account on desktop and phone. The updated assistant should show **Groq connection · ready**. No database migration is needed.
+4. Use **Send** for conversation. Start with menu research off; the saved library, USDA and packaged lookups are available without web research. **Research menus online** enables a separate Groq browser-search request, subject to your account's support and quota.
+
+The implementation uses `openai/gpt-oss-20b`, with tool lookups followed by a separate strict JSON response. Groq's free access has rate/usage limits; check your account rather than assuming unlimited free searches. The app has no automatic paid fallback. Model failures leave the proposal unsaved. [Groq structured outputs](https://console.groq.com/docs/structured-outputs), [browser search](https://console.groq.com/docs/tool-use/built-in-tools/browser-search).
+
+For **local hosting**, put `GROQ_API_KEY=…` in your ignored `.env.local` and restart the server with:
+
+```sh
+npm run local:stop
+node --env-file=.env.local server/manage.mjs start
+```
+
+Skip the stop command if no local server is running. Select **Local sync** and pair normally: the local pairing key authorizes use of its Groq key. Otherwise use the temporary session key. Local hosting still needs internet for Groq and packaged search. In development, `npm run dev` reads `.env.local`; permanent-key use requires Supabase sign-in and the allowlist, just like hosted mode.
+
+## Try meal actions on the watch
+
+Install Android **1.0.9** or newer, open Steady once, then use **Settings → Meal reminders → Test notification**. The updated test includes Android Reply choices: **Skip today** and up to three recent food portions or saved recipe servings. Try **Reply → Skip today** on the watch. A successful reply shows **Watch action received** on the phone without changing your diary.
+
+Real reminder choices save exactly the displayed portion and stop that meal's repeated reminders immediately. They do not interpret arbitrary text or create unknown dishes. Open Steady to bring the choice into the diary and sync it to desktop. If the portion differs, use **Log on phone** instead.
+
+The Android notification includes standard RemoteInput and wearable actions. Zepp controls whether Bip Max exposes them; this remains unverified on the physical watch. If the watch still offers only dismissal, this mirrored-notification route is unsupported there and would need a separate action screen in the Steady watch app. [Android reply actions](https://developer.android.com/develop/ui/views/notifications/build-notification#reply-action).
