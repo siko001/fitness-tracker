@@ -32,7 +32,6 @@
   ],
   "functions": {
     "api/food-assistant.mjs": {
-      "includeFiles": "public/data/usda-foods.json",
       "maxDuration": 120
     }
   }

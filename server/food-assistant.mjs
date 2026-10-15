@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import catalogRows from '../public/data/usda-foods.json' with { type: 'json' };
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { assistantRequestSchema, proposalSchema, assistantResponseSchema, foodIdentity } from '../src/assistant-schema.ts';
@@ -17,7 +17,7 @@ export function findFoods(foods, query, brand = '') {
 }
 let catalog;
 async function generalFoods() {
-  if (!catalog) catalog = JSON.parse(await readFile(new URL('../public/data/usda-foods.json', import.meta.url), 'utf8')).map(([id, name, survey, category, kcal, protein, carbs, fat, fibre, portions]) => ({
+  if (!catalog) catalog = catalogRows.map(([id, name, survey, category, kcal, protein, carbs, fat, fibre, portions]) => ({
     id: `import-usda-${id}`, name, group: foodGroup(category), preparation: preparation(name),
     per100: { kcal, protein, carbs, fat, fibre }, custom: true, estimated: true,
     source: survey ? 'USDA FNDDS 2021–2023' : 'USDA SR Legacy · April 2018',
