@@ -7,10 +7,10 @@ function describe(value: unknown): string {
   if (value === null) return 'Not set';
   if (typeof value !== 'object') return String(value);
   const v = value as Record<string, unknown>;
-  if (v.grams) return `${v.name} · ${v.grams} g · ${v.meal}`;
+  if (v.grams) return `${v.name} · ${v.grams} ${v.unit ?? 'g'} · ${v.meal}`;
   if (v.kg) return `${v.kg} kg`;
   if (v.steps !== undefined) return `${v.steps ?? '—'} steps · ${v.activeKcal ?? '—'} active kcal · ${v.distanceKm ?? '—'} km`;
-  if (v.per100) return `${v.name} · ${JSON.stringify(v.per100)} per 100 g`;
+  if (v.per100) return `${v.name} · ${JSON.stringify(v.per100)} per 100 ${v.unit ?? 'g'}`;
   if (v.yieldGrams) return `${v.name} · ${v.yieldGrams} g · ${v.servings} servings`;
   return JSON.stringify(value);
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { ArrowLeft, ArrowRightLeft, GripVertical, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
-import { entryMacros, fmt, meals, type Entry } from './model';
+import { entryMacros, fmt, meals, portionUnit, type Entry } from './model';
 import type { DiaryActions } from './Dashboard';
 
 export default function DiaryEntryRow({ entry, actions, onDragStart, onDragEnd }: {
@@ -25,7 +25,7 @@ export default function DiaryEntryRow({ entry, actions, onDragStart, onDragEnd }
   function choose(action: () => void) { if (menu.current) { menu.current.open = false; menu.current.querySelector('summary')?.focus(); } action(); }
   return <div className="diary-entry" draggable onDragStart={onDragStart} onDragEnd={onDragEnd}>
     <span className="entry-drag-handle" aria-hidden="true" title="Drag to another meal"><GripVertical size={15} /></span>
-    <div><strong>{entry.name}</strong><small>{entry.time && <><time dateTime={`${entry.date}T${entry.time}`}>{entry.time}</time> · </>}{fmt(entry.grams, 1)} g · {entry.preparation}{entry.estimated && ' · Estimate'}</small></div>
+    <div><strong>{entry.name}</strong><small>{entry.time && <><time dateTime={`${entry.date}T${entry.time}`}>{entry.time}</time> · </>}{fmt(entry.grams, 1)} {portionUnit(entry)} · {entry.preparation}{entry.estimated && ' · Estimate'}</small></div>
     <b>{fmt(entryMacros(entry).kcal)}<small> kcal</small></b>
     <details className="entry-actions" ref={menu} onToggle={e => {
       if (!e.currentTarget.open) { setMoving(false); return; }

@@ -16,7 +16,7 @@ cloud?.auth.onAuthStateChange((event, session) => {
   if (event === 'SIGNED_OUT' || keyAccount !== undefined && keyAccount !== next) sessionKey = '';
   keyAccount = next;
 });
-async function destination() {
+export async function assistantDestination() {
   const mode = await readMetadata<string>('syncMode');
   if (mode === 'local') {
     const local = await readMetadata<LocalConnection>('localConnection');
@@ -28,14 +28,14 @@ async function destination() {
 }
 export type AssistantStatus = { configured: boolean; savedKey: boolean; canSaveKey: boolean; signedIn: boolean };
 export async function assistantStatus(): Promise<AssistantStatus> {
-  const { url, token } = await destination();
+  const { url, token } = await assistantDestination();
   const response = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {}, signal: AbortSignal.timeout(20000) });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || 'Could not check your saved key.');
   return { configured: result.configured === true, savedKey: result.savedKey === true, canSaveKey: result.canSaveKey === true, signedIn: result.signedIn === true };
 }
 export async function updateAssistantKey(key: string | null): Promise<AssistantStatus> {
-  const { url, token } = await destination();
+  const { url, token } = await assistantDestination();
   const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify(key === null ? { action: 'remove_key' } : { action: 'save_key', apiKey: key.trim() }), signal: AbortSignal.timeout(25000) });
   const result = await response.json();
@@ -46,7 +46,7 @@ export async function askAssistant(state: State, messages: ChatMessage[], draft:
   if (!navigator.onLine) throw new Error('AI needs internet. Find a list in your saved foods and offline catalog instead.');
   // Retain the full history locally; send recent turns plus the current meal draft.
   const recentMessages = messages.slice(-24);
-  const { url, token } = await destination();
+  const { url, token } = await assistantDestination();
   const response = await fetch(url, {
     method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify({ messages: recentMessages, draft, foods: state.foods, recipes: state.recipes, webSearch, ...(sessionKey ? { apiKey: sessionKey } : {}) }),
@@ -71,10 +71,11 @@ export function applyAssistantItems(state: State, items: ResolvedItem[], entryId
       // Compare against the complete preview snapshot before recording a portion.
       const totals = recipePer100(recipe);
       if (Object.keys(totals).some(k => Math.abs(totals[k as keyof typeof totals] - food.per100[k as keyof typeof totals]) > .0001)) throw new Error('This recipe changed during your conversation. Look it up again.');
+      food = { ...food, fibreMissing: recipe.ingredients.some(i => i.food.fibreMissing) || undefined };
     } else {
       const existing = foods.find(f => f.id === food.id || foodIdentity(f) === foodIdentity(food) || f.sourceUrl && f.sourceUrl === food.sourceUrl && (f.brand || '') === (food.brand || '') && f.preparation === food.preparation);
       if (existing) {
-        if (JSON.stringify(existing.per100) !== JSON.stringify(food.per100)) throw new Error(`${food.name} changed or has different saved nutrition. Look up the saved item again.`);
+        if ((existing.unit ?? 'g') !== (food.unit ?? 'g') || JSON.stringify(existing.per100) !== JSON.stringify(food.per100)) throw new Error(`${food.name} changed or has different saved nutrition. Look up the saved item again.`);
         food = existing;
       } else if (row.existing) throw new Error(`${food.name} was removed. Look it up again.`);
       else foods.push(food);
@@ -83,7 +84,7 @@ export function applyAssistantItems(state: State, items: ResolvedItem[], entryId
     if (log) {
       if (!row.grams) throw new Error(`Choose the portion for ${food.name}.`);
       const entry = entrySchema.parse({ id: entryIds[i], ...log, name: food.brand && !food.name.toLowerCase().includes(food.brand.toLowerCase()) ? `${food.name} · ${food.brand}` : food.name,
-        preparation: food.preparation, grams: row.grams, per100: food.per100, estimated: food.estimated,
+        preparation: food.preparation, grams: row.grams, per100: food.per100, estimated: food.estimated, unit: food.unit, fibreMissing: food.fibreMissing,
         ...(row.recipeId ? { recipeId: row.recipeId } : { foodId: food.id }),
       });
       if (!entries.some(e => e.id === entry.id)) entries.push(entry);

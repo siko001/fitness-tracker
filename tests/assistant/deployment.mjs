@@ -31,5 +31,15 @@ try {
   assert.equal(result.body.items.length, 1);
   assert.equal(result.body.items[0].grams, 100);
   assert.ok(result.body.items[0].food.per100.kcal > 0);
-  console.log('Packaged Vercel function: startup, catalog lookup and proposal passed.');
+  const reading = { name: 'Label fixture', brand: null, category: 'Drinks', barcode: null, basisAmount: 100, unit: 'ml', nutrients: { kcal: 48, kj: null, protein: 0, carbs: 12, fat: 0, fibre: null }, servingAmount: null, servingUnit: null, notes: '', warnings: [] };
+  globalThis.fetch = async (_, options) => {
+    const body = JSON.parse(options.body);
+    assert.equal(body.model, 'qwen/qwen3.8-27b');
+    assert.equal(body.messages[1].content[1].type, 'image_url');
+    return Response.json({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(reading) } }] });
+  };
+  const scan = response();
+  await handler({ method: 'POST', headers: { host: 'localhost', 'content-type': 'application/json' }, body: { apiKey: 'test-key-no-provider-request', operation: 'scan_label', images: ['data:image/jpeg;base64,/9j/AA=='] } }, scan);
+  assert.equal(scan.statusCode, 200); assert.deepEqual(scan.body, reading);
+  console.log('Packaged Vercel function: startup, catalog lookup, proposal and vision scan passed.');
 } finally { globalThis.fetch = originalFetch; await rm(directory, { recursive: true, force: true }); }

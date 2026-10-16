@@ -15,7 +15,7 @@ describe('reviewed food data', () => {
     expect(candidate.sourceUrl).toBe('https://world.openfoodfacts.org/product/3017620422003');
   });
   it('does not confuse volume or per-serving nutrition with per-100 g', () => {
-    for (const per of ['100ml', 'serving', 'unknown']) {
+    for (const per of ['serving', 'unknown']) {
       const candidate = offCandidate(product({ aggregated_set: { per, nutrients: { 'energy-kcal': nutrient(200, 'kcal') } } }));
       expect(candidate.blockedReason).toBeTruthy(); expect(candidate.per100.kcal).toBeUndefined();
     }

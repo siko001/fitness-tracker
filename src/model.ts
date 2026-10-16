@@ -9,7 +9,7 @@ export const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(s => {
 }, 'Invalid calendar date');
 export const macrosSchema = z.object({ kcal: number.max(1000), protein: number.max(100), carbs: number.max(100), fat: number.max(100), fibre: number.max(100) });
 export const foodSchema = z.object({
-  id, name: text, group: z.enum(['Protein', 'Grains', 'Vegetables', 'Fruit', 'Dairy', 'Fats', 'Other']),
+  id, name: text, group: z.enum(['Protein', 'Grains', 'Vegetables', 'Fruit', 'Dairy', 'Fats', 'Drinks', 'Other']),
   preparation: z.enum(['Raw', 'Cooked', 'Dry', 'Ready to eat']),
   per100: macrosSchema, source: text, sourceUrl: z.string().url().optional(),
   custom: z.boolean(),
@@ -18,6 +18,9 @@ export const foodSchema = z.object({
   researchUrls: z.array(z.string().url()).max(8).optional(),
   serving: z.object({ label: text, grams: number.positive().max(100000) }).optional(),
   estimated: z.boolean().optional(),
+  unit: z.enum(['g', 'ml']).optional(),
+  fibreMissing: z.boolean().optional(),
+  barcode: z.string().regex(/^\d{8,14}$/).optional(),
   importedFrom: z.object({ provider: z.enum(['usda', 'openfoodfacts']), recordId: id, modified: z.boolean() }).optional(),
 });
 export const recipeSchema = z.object({
@@ -25,13 +28,15 @@ export const recipeSchema = z.object({
   yieldGrams: number.positive().max(1000000), servings: number.positive().max(10000),
   estimated: z.boolean().optional(),
 });
-export const meals = ['Breakfast', 'Lunch', 'Dinner', 'Snacks'] as const;
+export const meals = ['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Drinks'] as const;
 export const skippedMealSchema = z.object({ date: dateSchema, meal: z.enum(meals) });
 export const entrySchema = z.object({
   id, date: dateSchema, meal: z.enum(meals), name: text, preparation: z.string().max(200),
   grams: number.positive().max(100000), per100: macrosSchema,
   foodId: id.optional(), recipeId: id.optional(),
   estimated: z.boolean().optional(),
+  unit: z.enum(['g', 'ml']).optional(),
+  fibreMissing: z.boolean().optional(),
   time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/).optional(),
 });
 export const profileSchema = z.object({
@@ -69,6 +74,9 @@ export type Profile = z.infer<typeof profileSchema>;
 export type Activity = z.infer<typeof activitySchema>;
 export type State = z.infer<typeof stateSchema>;
 export type Meal = typeof meals[number];
+// Historical `grams` fields hold the measured quantity in this explicit unit.
+// Missing unit means grams for existing diaries, recipes and backups.
+export const portionUnit = (item: { unit?: 'g' | 'ml' }) => item.unit ?? 'g';
 export type SkippedMeal = z.infer<typeof skippedMealSchema>;
 export const zero: Macros = { kcal: 0, protein: 0, carbs: 0, fat: 0, fibre: 0 };
 export const uid = () => crypto.randomUUID();

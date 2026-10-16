@@ -1,0 +1,39 @@
+.scan-modal{width:min(760px,96vw)}
+.label-scan fieldset{border:0;padding:0;margin:0;min-width:0;display:grid;gap:18px}
+.label-scan .form-grid{margin:0}
+.label-scan h3{margin:8px 0 0;font-size:15px}
+.scan-capture-actions,.scan-topline,.scan-normalised,.log-shortcuts{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.scan-topline{justify-content:space-between;color:var(--muted);font-size:12px;margin-bottom:18px}
+.scan-capture-actions{margin:20px 0}
+.scan-file{position:relative;cursor:pointer}
+.scan-file input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+.scan-file:focus-within{outline:2px solid var(--green);outline-offset:3px}
+.scan-file.disabled{opacity:.5;cursor:default}
+.scan-photos{display:flex;gap:14px;margin:18px 0}
+.scan-photos figure{position:relative;margin:0;width:calc(50% - 7px);max-width:280px}
+.scan-photos img{width:100%;height:190px;object-fit:contain;background:var(--cream);border:1px solid var(--line);border-radius:10px}
+.scan-photos .icon-button{position:absolute;right:5px;top:5px;background:var(--surface,#fff);border:1px solid var(--line)}
+.scan-photos figcaption{font-size:11px;color:var(--muted);margin-top:5px}
+.scan-photos.compact img{height:100px}
+.scan-photos.compact figure{width:110px}
+.scan-privacy,.scan-existing small{font-size:12px;line-height:1.6;color:var(--muted);margin:0}
+.scan-warning,.scan-existing,.scan-normalised{padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--cream)}
+.scan-warning p{margin:4px 0}
+.scan-existing{display:grid;gap:10px}
+.scan-existing p{margin:0}
+.scan-existing button{justify-self:start}
+.scan-normalised{justify-content:space-between}
+.scan-normalised span{font-size:11px;color:var(--muted)}
+.scan-portion{margin:0}
+.scan-review{padding-top:12px;border-top:1px solid var(--line)}
+.log-shortcuts{margin-bottom:18px}
+.log-shortcuts .assistant-entry{margin:0}
+.meal[data-meal="Drinks"]{grid-column:1 / -1}
+@media(max-width:600px){.scan-capture-actions .button{flex:1}.scan-photos img{height:150px}.scan-modal .modal-footer .button{font-size:12px;padding:12px}.scan-nutrients{grid-template-columns:1fr 1fr}.log-shortcuts{display:grid}.log-shortcuts .button{justify-content:center}}
+.meal-icon.drinks{background:#e6f0f2;color:#5d8790}
+:root[data-theme="dark"] .meal-icon.drinks{background:#28373c;color:#9cc1c8}
+
+.label-scan .field{margin-bottom:0}
+.scan-photo-preview{display:block;width:100%;padding:0;background:none;border-radius:10px}
+.scan-photo-expanded{display:grid;gap:8px;margin:14px 0}
+.scan-photo-expanded img{width:100%;height:auto;border-radius:8px}

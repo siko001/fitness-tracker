@@ -72,9 +72,12 @@ function summarise(days: ReportDay[], state: State) {
     inconsistentNutrition: entries.some(e => e.per100.fat * 9 > e.per100.kcal * 1.05),
     estimatedEntries: entries.filter(e => e.estimated).length, entryCount: entries.length,
     timedEntries: entries.filter(e => e.time).length,
+    drinkEntries: entries.filter(e => e.meal === 'Drinks').length,
+    drinkKcal: entries.filter(e => e.meal === 'Drinks').reduce((n, e) => n + entryMacros(e).kcal, 0),
+    fibreMissing: entries.some(e => e.fibreMissing),
     snackEntries: entries.filter(e => e.meal === 'Snacks').length,
     snackShare: totals.kcal ? entries.filter(e => e.meal === 'Snacks').reduce((n, e) => n + entryMacros(e).kcal, 0) / totals.kcal * 100 : null,
-    mealTimes: (['Breakfast', 'Lunch', 'Dinner', 'Snacks'] as const).map(meal => {
+    mealTimes: (['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Drinks'] as const).map(meal => {
       const times = entries.filter(e => e.meal === meal && e.time).map(e => e.time!);
       return { meal, first: times.toSorted()[0] ?? null, last: times.toSorted().at(-1) ?? null, count: times.length };
     }),
@@ -123,10 +126,11 @@ export function reportVerdict(s: PeriodSummary, state: State): Insight {
   if (s.checkedAverage!.kcal > state.profile.calorieGoal * 1.1) issues.push('Food intake averaged above your target.');
   if (s.checkedAverage!.kcal < state.profile.calorieGoal * .9) issues.push('Food intake averaged below your target; check for missing portions.');
   if (s.steps! < state.profile.stepGoal) issues.push('Walking averaged below your step target.');
+  if (s.fibreMissing) issues.push('Some labels have no fibre value, so fibre cannot be assessed.');
   if (s.inconsistentNutrition) issues.push('Some food nutrition needs checking.');
   else if (s.checkedFatShare != null && s.checkedFatShare > 30) issues.push('Fat’s share of calories was above the general reference.');
   else if (s.checkedFatShare != null && s.checkedFatShare < 15) issues.push('Fat’s share of calories was below the general reference.');
-  if (s.checkedAverage!.fibre < 25) issues.push('Recorded fibre was below the general reference.');
+  if (!s.fibreMissing && s.checkedAverage!.fibre < 25) issues.push('Recorded fibre was below the general reference.');
   return issues.length ? { title: 'A few things to adjust', detail: issues.slice(0, 3).join(' '), tone: 'attention' }
     : { title: 'Tracking well against your targets', detail: 'Average intake was near your calorie target and steps met your goal. Your recorded fat and fibre also fit the general references.', tone: 'positive' };
 }
@@ -140,9 +144,10 @@ export function nutritionInsights(s: PeriodSummary, state: State): Insight[] {
   if (s.inconsistentNutrition) insights.push({ title: 'Check food nutrition', detail: 'At least one item has more energy from fat than its stated calories allow. Review its portion and nutrition before relying on the fat comparison.', tone: 'attention' });
   else if (s.foodConfidence && s.checkedFatShare != null && s.checkedFatShare > 30) insights.push({ title: 'Look at the type of fat, too', detail: 'Check portions of oils, sauces and other fat contributors. Total fat alone cannot tell us saturated fat or overall food quality.', tone: 'attention' });
   else if (s.foodConfidence && s.checkedFatShare != null && s.checkedFatShare < 15) insights.push({ title: 'Review the low fat share', detail: 'Check food records and missing oils or sauces. Fat is essential; a lower percentage is not automatically better.', tone: 'attention' });
-  if (s.foodConfidence && s.checkedAverage!.fibre < 25) insights.push({ title: 'Make room for fibre', detail: 'Recorded fibre is low against the general reference. Check incomplete nutrition labels; beans, vegetables and whole grains can help.', tone: 'attention' });
+  if (s.foodConfidence && !s.fibreMissing && s.checkedAverage!.fibre < 25) insights.push({ title: 'Make room for fibre', detail: 'Recorded fibre is low against the general reference. Check incomplete nutrition labels; beans, vegetables and whole grains can help.', tone: 'attention' });
   if (s.stepConfidence && state.profile.stepGoal && s.steps! < state.profile.stepGoal) insights.push({ title: 'Build a steadier walking routine', detail: 'Short walks that fit your day can help you work toward your step goal. Walking is not a requirement to earn or cancel out food.', tone: 'attention' });
   if (!s.stepConfidence) insights.push({ title: 'Fill the activity gaps', detail: 'Check watch sync or enter daily totals. Days without step data are excluded, not counted as zero.', tone: 'neutral' });
+  if (s.fibreMissing) insights.push({ title: 'Fibre data is incomplete', detail: 'Some labels have no fibre value. Your review leaves fibre unknown instead of treating it as zero.', tone: 'neutral' });
   if (!insights.length) insights.push({ title: 'Keep the routine sustainable', detail: 'Your averages look consistent with your plan. Keep logging and look at weight over several weeks rather than reacting to a single day.', tone: 'positive' });
   return insights.slice(0, 4);
 }

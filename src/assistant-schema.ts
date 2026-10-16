@@ -31,7 +31,7 @@ export type DraftItem = z.infer<typeof draftItemSchema>;
 export type ResolvedItem = z.infer<typeof resolvedItemSchema>;
 export type AssistantResponse = z.infer<typeof assistantResponseSchema>;
 
-export function foodIdentity(food: { name: string; brand?: string; preparation: string }) {
+export function foodIdentity(food: { name: string; brand?: string; preparation: string; unit?: 'g' | 'ml' }) {
   const normal = (s: string) => s.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
-  return [normal(food.name), normal(food.brand || ''), food.preparation].join('|');
+  return [normal(food.name), normal(food.brand || ''), food.preparation, food.unit ?? 'g'].join('|');
 }

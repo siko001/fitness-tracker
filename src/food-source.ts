@@ -1,6 +1,7 @@
 import type { Food } from './model.ts';
 import type { FoodCandidate } from './food-import.ts';
 export function foodGroup(category: string): Food['group'] {
+  if (/beverage|drink|juice|coffee|tea\b/i.test(category)) return 'Drinks';
   if (/vegetable|legume|bean|lentil/i.test(category)) return 'Vegetables';
   if (/fruit/i.test(category)) return 'Fruit';
   if (/dairy|milk|cheese|yogurt/i.test(category)) return 'Dairy';
@@ -39,7 +40,7 @@ export function offCandidate(raw: unknown): FoodCandidate {
   // v3 explicitly separates mass/volume and prepared/as-sold values. Never use
   // a per-serving or per-100 ml number as a per-100 g nutrient value.
   const volume = /^(100ml|100 ml)$/i.test(basis) || (!modern && /^(ml|l|cl)$/i.test(text(p.product_quantity_unit)));
-  const supported = modern ? basis === '100g' && (!set.preparation || set.preparation === 'as_sold') : !volume;
+  const supported = modern ? (basis === '100g' || /^(100ml|100 ml)$/i.test(basis)) && (!set.preparation || set.preparation === 'as_sold') : !volume;
   const get = (key: string, unit: string, max: number) => {
     if (!supported) return undefined;
     if (!modern) return value(legacy[`${key}_100g`], max);
@@ -51,17 +52,18 @@ export function offCandidate(raw: unknown): FoodCandidate {
     kcal: get('energy-kcal', 'kcal', 1000) ?? (() => { const kj = get('energy-kj', 'kJ', 4184); return kj === undefined ? undefined : Math.round(kj / 4.184 * 1000) / 1000; })(),
     protein: get('proteins', 'g', 100), carbs: get('carbohydrates', 'g', 100), fat: get('fat', 'g', 100), fibre: get('fiber', 'g', 100),
   };
-  const servingText = text(p.serving_size), gramsText = servingText.match(/(?:^|[\s(])(\d+(?:[.,]\d+)?)\s*g\b/i);
+  const unit = volume ? 'ml' : 'g';
+  const servingText = text(p.serving_size), gramsText = servingText.match(/(?:^|[\s(])(\d+(?:[.,]\d+)?)\s*(g|ml)\b/i);
   const servingUnit = text(p.serving_quantity_unit);
-  const grams = servingUnit === 'g' ? value(p.serving_quantity, 100000) : gramsText ? value(gramsText[1].replace(',', '.'), 100000) : undefined;
+  const grams = servingUnit === unit ? value(p.serving_quantity, 100000) : gramsText && gramsText[2].toLowerCase() === unit ? value(gramsText[1].replace(',', '.'), 100000) : undefined;
   const portions = grams && grams > 0 ? [{ label: servingText || '1 serving', grams }] : [];
   const modified = value(p.last_modified_t, 9e12);
   return {
     id: `import-off-${summary.code}`, recordId: summary.code, provider: 'openfoodfacts', name: summary.name,
     brand: summary.brand, quantity: summary.quantity, source: 'Open Food Facts', sourceUrl: `https://world.openfoodfacts.org/product/${summary.code}`,
-    group: 'Other', preparation: 'Ready to eat', per100, portions,
+    group: volume ? 'Drinks' : 'Other', unit: volume ? 'ml' : undefined, barcode: summary.code, preparation: 'Ready to eat', per100, portions,
     updated: modified ? new Date(modified * 1000).toISOString().slice(0, 10) : undefined,
-    blockedReason: !supported ? volume ? 'This label uses millilitres. Steady currently imports food by grams, so this result cannot be imported.' : 'This source has no nutrition per 100 g as sold. Use another result or add the food manually.' : undefined,
+    blockedReason: !supported ? volume ? 'This older source does not clearly specify the nutrition unit. Scan its label instead.' : 'This source has no nutrition per 100 g or 100 ml as sold. Use another result or add the food manually.' : undefined,
   };
 }
 

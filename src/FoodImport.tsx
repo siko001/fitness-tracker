@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Search } from 'lucide-react';
 import { FoodForm } from './dialogs';
 import { Field, ModalActions } from './ui';
-import { fmt, type Food } from './model';
+import { fmt, portionUnit, type Food } from './model';
 import Pagination, { paginate } from './Pagination';
 import { candidateFood, existingImport, getProduct, loadFoodCatalog, nutrientKeys, searchCatalog, searchProducts, type FoodCandidate, type ProductSummary } from './food-import';
 
@@ -53,11 +53,11 @@ export default function FoodImport({ foods, onSave, onClose }: { foods: Food[]; 
       {source}
       {editing ? <FoodForm key={candidate.id} food={{ ...candidateFood(candidate), serving }} importing onSave={onSave} onClose={onClose} /> : <>
         <h3 className="import-food-name">{candidate.name}</h3>
-        <p className="muted">{candidate.preparation} · nutrition per 100 g</p>
+        <p className="muted">{candidate.preparation} · nutrition per 100 {portionUnit(candidate)}</p>
         {candidate.blockedReason ? <p className="form-error" role="alert">{candidate.blockedReason}</p> : <>
-          <table className="import-nutrition"><thead><tr><th>Nutrient</th><th>Per 100 g</th><th>{serving ? `${fmt(serving.grams, 1)} g portion` : 'Your preview'}</th></tr></thead><tbody>{nutrientKeys.map(key => <tr key={key}><th>{key === 'kcal' ? 'Energy' : key.charAt(0).toUpperCase() + key.slice(1)}</th><td>{candidate.per100[key] == null ? 'Missing' : `${fmt(candidate.per100[key]!, 1)} ${key === 'kcal' ? 'kcal' : 'g'}`}</td><td>{candidate.per100[key] == null ? '—' : `${fmt(candidate.per100[key]! * (serving?.grams ?? 100) / 100, 1)} ${key === 'kcal' ? 'kcal' : 'g'}`}</td></tr>)}</tbody></table>
-          <Field label="Reference portion"><select value={portion} onChange={e => setPortion(Number(e.target.value))}><option value={-1}>100 g · no saved serving</option>{candidate.portions.map((p, i) => <option value={i} key={i}>{p.label} ({fmt(p.grams, 1)} g)</option>)}</select></Field>
-          <p className="import-note">{candidate.provider === 'usda' ? 'Recipes and portion sizes vary. Check the match and weigh your own portion.' : 'Community data can be incomplete. Match the brand, barcode and nutrition label.'} {candidate.portions.length ? 'You can change the serving weight next.' : 'Add your own serving weight in the next step.'}</p>
+          <table className="import-nutrition"><thead><tr><th>Nutrient</th><th>Per 100 {portionUnit(candidate)}</th><th>{serving ? `${fmt(serving.grams, 1)} ${portionUnit(candidate)} portion` : 'Your preview'}</th></tr></thead><tbody>{nutrientKeys.map(key => <tr key={key}><th>{key === 'kcal' ? 'Energy' : key.charAt(0).toUpperCase() + key.slice(1)}</th><td>{candidate.per100[key] == null ? 'Missing' : `${fmt(candidate.per100[key]!, 1)} ${key === 'kcal' ? 'kcal' : 'g'}`}</td><td>{candidate.per100[key] == null ? '—' : `${fmt(candidate.per100[key]! * (serving?.grams ?? 100) / 100, 1)} ${key === 'kcal' ? 'kcal' : 'g'}`}</td></tr>)}</tbody></table>
+          <Field label="Reference portion"><select value={portion} onChange={e => setPortion(Number(e.target.value))}><option value={-1}>100 {portionUnit(candidate)} · no saved serving</option>{candidate.portions.map((p, i) => <option value={i} key={i}>{p.label} ({fmt(p.grams, 1)} {portionUnit(candidate)})</option>)}</select></Field>
+          <p className="import-note">{candidate.provider === 'usda' ? 'Recipes and portion sizes vary. Check the match and weigh your own portion.' : 'Community data can be incomplete. Match the brand, barcode and nutrition label.'} {candidate.portions.length ? 'You can change the serving size next.' : 'Add your own serving size in the next step.'}</p>
           {nutrientKeys.some(k => candidate.per100[k] == null) && <p className="callout">Missing nutrients stay blank. Complete them from the label before adding.</p>}
         </>}
         {existing && <p className="callout">Already in your library as <strong>{existing.name}</strong>. Edit it from the library.</p>}

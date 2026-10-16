@@ -121,3 +121,14 @@ describe('progress insights', () => {
     expect(state.weights[0].date).toBe(range.end);
   });
 });
+
+ it('includes drinks without treating missing fibre as zero or requiring a drinks check-in', () => {
+  const state = filled();
+  state.entries.push({ ...state.entries[0], id: 'drink', meal: 'Drinks', grams: 250, unit: 'ml', fibreMissing: true, per100: { kcal: 48, protein: 0, carbs: 12, fat: 0, fibre: 0 }, time: '21:00' });
+  const report = buildReport(state, range, today);
+  expect(report.current.drinkKcal).toBe(120); expect(report.current.drinkEntries).toBe(1);
+  expect(report.current.checkedDays).toBe(7); expect(report.current.fibreMissing).toBe(true);
+  expect(report.verdict.detail).toContain('fibre cannot be assessed');
+  expect(nutritionInsights(report.current, state).some(i => i.title === 'Make room for fibre')).toBe(false);
+  expect(report.current.mealTimes.find(m => m.meal === 'Drinks')?.first).toBe('21:00');
+});

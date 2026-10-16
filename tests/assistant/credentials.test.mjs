@@ -50,6 +50,8 @@ test('save on one device, use on another: credentials stay encrypted and scoped 
   let used = false;
   const sent = await request({ ...store, assistant: async (input, options) => { assert.equal(input.apiKey, undefined); assert.equal(options.apiKey, key); used = true; return { reply: 'Hello', items: [], draft: [], warnings: [] }; } }, 'POST', { messages: [{ role: 'user', content: 'Hello' }] });
   assert.equal(sent.status, 200); assert(used);
+  const scan = await request({ ...store, scanner: async (input, options) => { assert.equal(input.apiKey, undefined); assert.equal(options.apiKey, key); return { unit: 'ml' }; } }, 'POST', { operation: 'scan_label', images: ['data:image/jpeg;base64,/9j/AA=='] }, 'owner-refreshed');
+  assert.equal(scan.status, 200); assert.equal(scan.unit, 'ml');
   const removed = await request(store, 'POST', { action: 'remove_key' });
   assert.equal(removed.savedKey, false); assert.equal((await request(store, 'GET', undefined, 'owner-refreshed')).configured, false);
 });

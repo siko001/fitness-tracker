@@ -78,6 +78,12 @@ The development server is for editing the interface. Use a production build for 
 
 Hosted sync requires your own Supabase project, personal auth user and Vercel deployment; no account credentials are committed to this repository. The Android debug APK was successfully built in this workspace with JDK 21 on 28 September 2026. Foreground health imports and notifications have been verified on the Nothing Phone 3a. Background operation needs its new permission and the checks in the guide. The iOS project is prepared but has not been compiled or tested here.
 
+## Nutrition labels and drinks
+
+Use **Food library → Scan label**, or **Drinks → Add drink → Scan label**. Take a photo or upload the nutrition panel; optionally add the front of the pack for the name and brand. The existing Groq key is reused. Check the extracted values, choose your portion, and save to the library with or without a diary entry. Unreadable values remain blank; missing fibre is marked unknown. Photos are not retained by Steady; unfinished extracted drafts stay on this device.
+
+Drinks are a separate diary section and library category, included in daily calories and macros. Labels can use grams or millilitres; per-serving labels are normalised to per 100 in that same unit, without assuming a density. Existing records without a unit remain grams. The legacy `grams` quantity field is interpreted using each food/entry’s optional `unit`; recipe yields remain measured grams. Update older native builds before using the extended diary there.
+
 ## Data and privacy
 
 IndexedDB saves the diary first. Hosted sync uses your Supabase project with authentication, row-level security and revision checks. The browser uses only a publishable key. **Never put a Supabase secret/service-role key in a `VITE_` variable.** The local server uses a private pairing key and saves an atomic snapshot under `.steady-data/`.

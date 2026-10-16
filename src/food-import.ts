@@ -66,5 +66,5 @@ export function candidateFood(candidate: FoodCandidate): Food {
   // Call only after all required nutrient values have been reviewed/validated.
   return { id: candidate.id, name: candidate.name, group: candidate.group, preparation: candidate.preparation,
     per100: candidate.per100 as Macros, source: candidate.source, sourceUrl: candidate.sourceUrl, custom: true,
-    brand: candidate.brand, estimated: candidate.estimated, importedFrom: { provider: candidate.provider, recordId: candidate.recordId, modified: false } };
+    brand: candidate.brand, unit: candidate.unit, barcode: candidate.barcode, estimated: candidate.estimated, importedFrom: { provider: candidate.provider, recordId: candidate.recordId, modified: false } };
 }

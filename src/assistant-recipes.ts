@@ -1,4 +1,4 @@
-import { foodSchema, recipeSchema, type Entry, type Food, type Recipe, type State } from './model';
+import { foodSchema, recipeSchema, portionUnit, type Entry, type Food, type Recipe, type State } from './model';
 import type { ResolvedItem } from './assistant-schema';
 
 export type AssistantRecipeOptions = Pick<Recipe, 'id' | 'name' | 'yieldGrams' | 'servings'>;
@@ -24,15 +24,16 @@ export function recipeFromAssistant(state: State, items: ResolvedItem[], options
 }
 
 export function recipeFromDiaryEntry(state: State, entry: Entry): Recipe {
+  if (entry.unit === 'ml') throw new Error('Use the recipe editor and enter a measured finished weight for drinks.');
   const current = state.foods.find(f => f.id === entry.foodId);
   const sameNutrition = current && Object.keys(entry.per100).every(k => entry.per100[k as keyof typeof entry.per100] === current.per100[k as keyof typeof current.per100]);
   // Use the historical snapshot if the library food has changed or disappeared.
   // Creating a reusable recipe must never rewrite the original diary calories.
-  const food: Food = current && sameNutrition && current.preparation === entry.preparation
+  const food: Food = current && sameNutrition && portionUnit(current) === portionUnit(entry) && !!current.fibreMissing === !!entry.fibreMissing && current.preparation === entry.preparation
     ? { ...current, estimated: !!entry.estimated || !!current.estimated }
     : foodSchema.parse({ id: `diary-food:${entry.id}`, name: entry.name, group: 'Other',
       preparation: foodSchema.shape.preparation.safeParse(entry.preparation).success ? entry.preparation : 'Ready to eat',
-      per100: entry.per100, source: 'Diary snapshot', custom: true, estimated: entry.estimated,
+      per100: entry.per100, fibreMissing: entry.fibreMissing, source: 'Diary snapshot', custom: true, estimated: entry.estimated,
       notes: 'Nutrition and portion copied from the logged entry.',
     });
   return recipeSchema.parse({ id: assistantRecipeId(entry.id), name: entry.name, ingredients: [{ food, grams: entry.grams }], yieldGrams: entry.grams, servings: 1, estimated: entry.estimated || food.estimated });

@@ -75,7 +75,7 @@ export function refreshReminders(): Promise<void> {
       return;
     }
     if (!enabled) return;
-    await LocalNotifications.registerActionTypes({ types: meals.filter(m => m !== 'Snacks').map(meal => ({ id: `steady-${meal}`, actions: [
+    await LocalNotifications.registerActionTypes({ types: meals.filter(m => m !== 'Snacks' && m !== 'Drinks').map(meal => ({ id: `steady-${meal}`, actions: [
       { id: 'log', title: `Log ${meal.toLowerCase()}`, foreground: true },
       // Capacitor needs its webview to write IndexedDB; iOS brings the app forward.
       { id: 'skip', title: `Skip ${meal.toLowerCase()} today`, foreground: true },

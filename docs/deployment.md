@@ -331,3 +331,11 @@ Install Android **1.0.9** or newer, open Steady once, then use **Settings → Me
 Real reminder choices save exactly the displayed portion and stop that meal's repeated reminders immediately. They do not interpret arbitrary text or create unknown dishes. Open Steady to bring the choice into the diary and sync it to desktop. If the portion differs, use **Log on phone** instead.
 
 The Android notification includes standard RemoteInput and wearable actions. Zepp controls whether Bip Max exposes them; this remains unverified on the physical watch. If the watch still offers only dismissal, this mirrored-notification route is unsupported there and would need a separate action screen in the Steady watch app. [Android reply actions](https://developer.android.com/develop/ui/views/notifications/build-notification#reply-action).
+
+## Nutrition-label photo scanning
+
+The existing `/api/food-assistant` function accepts `operation: "scan_label"` through the same saved-key authentication and rate limit. No new database table, secret, or photo bucket is required. Groq vision currently uses `qwen/qwen3.8-27b` with JSON mode; `GROQ_VISION_MODEL` is an optional server-only override. It must support images, JSON object responses and `reasoning_effort: "none"`. Verify model access in the Groq project; quota and model availability depend on the account. See [Groq vision](https://console.groq.com/docs/vision) and [model documentation](https://console.groq.com/docs/model/qwen/qwen3.8-27b).
+
+The browser re-encodes up to two photos to JPEG, each below 800,000 data-URL characters. Server request and image bounds are enforced, and only fixed Groq endpoints receive the data. Photos are never persisted in Steady; extraction drafts are local metadata. All visible numbers must be reviewed before saving. Tests mock Groq responses, so a real, clearly photographed package should still be checked against its printed panel during user acceptance.
+
+This release targets the web app. Older installed app builds do not understand the new Drinks meal/category and ml unit. Rebuild and update the installed app when native testing resumes; do not use an old build to edit the extended diary.

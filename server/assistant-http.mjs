@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto';
 import { foodAssistant } from './food-assistant.mjs';
+import { scanNutritionLabel } from './label-scan.mjs';
 import { CredentialError, credentialUser, credentialStore, credentialsEnabled, decryptCredential } from './assistant-credentials.mjs';
 
 const budgets = new Map();
 function json(res, status, body) { res.statusCode = status; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(body)); }
-export async function assistantHttp(req, res, { localAuthorized = false, env = process.env, fetcher = fetch, assistant = foodAssistant } = {}) {
+export async function assistantHttp(req, res, { localAuthorized = false, env = process.env, fetcher = fetch, assistant = foodAssistant, scanner = scanNutritionLabel } = {}) {
   res.setHeader('Cache-Control', 'no-store'); res.setHeader('X-Content-Type-Options', 'nosniff');
   const origin = req.headers.origin;
   const allowed = new Set(['https://fitness-tracker-one-steel.vercel.app', 'https://localhost', 'http://localhost', 'capacitor://localhost', ...(env.STEADY_ALLOWED_ORIGINS || '').split(',')]);
@@ -13,18 +14,18 @@ export async function assistantHttp(req, res, { localAuthorized = false, env = p
   if (origin) { res.setHeader('Access-Control-Allow-Origin', origin); res.setHeader('Vary', 'Origin'); }
   if (req.method === 'OPTIONS') { res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS'); res.setHeader('Access-Control-Allow-Headers', 'Authorization,Content-Type'); res.statusCode = 204; return res.end(); }
   if (!['GET', 'POST'].includes(req.method)) return json(res, 405, { error: 'Method not allowed' });
+  let input;
   try {
-    let input;
     if (req.method === 'POST') {
       if (!req.headers['content-type']?.startsWith('application/json')) return json(res, 415, { error: 'JSON required' });
-      if (Number(req.headers['content-length']) > 2_000_000) return json(res, 413, { error: 'Food library is too large for this request.' });
+      if (Number(req.headers['content-length']) > 2_000_000) return json(res, 413, { error: 'This request is too large. Use fewer items or smaller photos.' });
       if (req.body !== undefined) input = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       else {
         let size = 0; const chunks = [];
-        for await (const chunk of req) { size += Buffer.byteLength(chunk); if (size > 2_000_000) return json(res, 413, { error: 'Food library is too large for this request.' }); chunks.push(Buffer.from(chunk)); }
+        for await (const chunk of req) { size += Buffer.byteLength(chunk); if (size > 2_000_000) return json(res, 413, { error: 'This request is too large. Use fewer items or smaller photos.' }); chunks.push(Buffer.from(chunk)); }
         input = JSON.parse(Buffer.concat(chunks).toString('utf8'));
       }
-      if (JSON.stringify(input).length > 2_000_000) return json(res, 413, { error: 'Food library is too large for this request.' });
+      if (JSON.stringify(input).length > 2_000_000) return json(res, 413, { error: 'This request is too large. Use fewer items or smaller photos.' });
     }
     const suppliedKey = typeof input?.apiKey === 'string' && input.apiKey.trim().length >= 20 && input.apiKey.length <= 250;
     const userId = localAuthorized ? null : await credentialUser(req.headers.authorization, env, fetcher);
@@ -54,11 +55,12 @@ export async function assistantHttp(req, res, { localAuthorized = false, env = p
     if (recent.length >= 6) return json(res, 429, { error: 'Please wait a minute before sending more AI requests.' });
     if (budgets.size > 1000) budgets.clear();
     budgets.set(identity, [...recent, now]);
+    if (input.operation === 'scan_label') return json(res, 200, await scanner(input, { apiKey, env, fetcher }));
     return json(res, 200, await assistant(input, { apiKey }));
   } catch (e) {
     // Never return upstream bodies (they can echo food text or credentials).
     if (e instanceof CredentialError) return json(res, e.status, { error: e.message });
     const safe = e.status && [429, 502, 503].includes(e.status);
-    return json(res, safe ? e.status : 400, { error: safe ? e.message : 'Could not prepare this meal. Try a shorter message or fewer items. Nothing has been saved.' });
+    return json(res, safe ? e.status : 400, { error: safe ? e.message : input?.operation === 'scan_label' ? 'Could not read these photos. Choose up to two clear label photos and retry. Nothing has been saved.' : 'Could not prepare this meal. Try a shorter message or fewer items. Nothing has been saved.' });
   }
 }
