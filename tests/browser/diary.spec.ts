@@ -4,7 +4,8 @@ import { readFile } from 'node:fs/promises';
 test('log and edit food offline; recipes, backups and mobile layout', async ({ page, context }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.goto('/'); await expect(page.getByRole('heading', { name: 'Your day, at a glance.' })).toBeVisible();
-  await page.getByRole('button', { name: 'Log food', exact: true }).click();
+  await page.getByRole('button', { name: 'Overview', exact: true }).click();
+  await page.getByRole('button', { name: 'Add food to lunch', exact: true }).click();
   await page.getByRole('textbox', { name: 'Search foods or recipes' }).fill('Chicken breast, skinless');
   await page.getByRole('button', { name: /Chicken breast, skinless.*Raw/ }).click();
   await page.getByLabel('Amount eaten (g)').fill('200');
@@ -20,7 +21,8 @@ test('log and edit food offline; recipes, backups and mobile layout', async ({ p
   await page.reload(); await page.waitForFunction(() => !!navigator.serviceWorker.controller);
   await context.setOffline(true); await page.reload();
   await expect(page.locator('.hero-number')).toHaveText('240 kcal');
-  await page.getByRole('button', { name: 'Edit Chicken breast, skinless', exact: true }).click();
+  await page.locator('summary[aria-label="Actions for Chicken breast, skinless"]').click();
+  await page.locator('.entry-actions-menu').getByRole('button', { name: 'Edit', exact: true }).click();
   await page.getByLabel('Amount eaten (g)').fill('250'); await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(page.locator('.hero-number')).toHaveText('300 kcal');
   await page.getByRole('button', { name: 'Recipes', exact: true }).first().click();

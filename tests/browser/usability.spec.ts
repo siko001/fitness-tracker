@@ -60,7 +60,8 @@ test('a thousand foods stay searchable, paged and usable offline on mobile', asy
   await page.emulateMedia({ colorScheme: 'light' });
   await page.screenshot({ path: 'test-results/foods-light-desktop.png' });
 
-  await page.getByRole('button', { name: 'Log food', exact: true }).click();
+  await page.getByRole('button', { name: 'Overview', exact: true }).click();
+  await page.getByRole('button', { name: 'Add lunch', exact: true }).click();
   await expect(page.locator('.food-option')).toHaveCount(20);
   await page.getByLabel('Search foods or recipes').fill('0999');
   await expect(page.locator('.food-option')).toHaveCount(1);

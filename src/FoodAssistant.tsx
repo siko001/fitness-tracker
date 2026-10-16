@@ -4,7 +4,8 @@ import remarkGfm from 'remark-gfm';
 import { ArrowUp, Sparkles, Trash2, History, Plus, Settings2, Check, Search } from 'lucide-react';
 import { chatTitle, emptyRecipeDraft, hasChatContent, newAssistantChat, readAssistantHistory, saveAssistantChat, selectAssistantChat, type AssistantChat, type AssistantHistory } from './assistant-history';
 import { assistantRecipeId, assistantRecipeName, type AssistantRecipeOptions } from './assistant-recipes';
-import { askAssistant, assistantConfigured, getAssistantKey, setAssistantKey } from './food-assistant';
+import { askAssistant } from './food-assistant';
+import AssistantKeySettings, { useAssistantCredentials } from './AssistantKeySettings';
 import { type ChatMessage, type DraftItem, type ResolvedItem } from './assistant-schema';
 import { candidateFood, loadFoodCatalog, searchCatalog } from './food-import';
 import { parseIngredientLines } from './quick-ingredients';
@@ -50,7 +51,8 @@ function AssistantConversation({ state, initial, chats, persist, select, onClose
   const [alternatives, setAlternatives] = useState<Food[][]>(initial.alternatives), [warnings, setWarnings] = useState<string[]>(initial.warnings);
   const [busy, setBusy] = useState(false), [saving, setSaving] = useState(false), [error, setError] = useState('');
   const [pendingReply, setPendingReply] = useState(initial.pending), [savedAt, setSavedAt] = useState(initial.savedAt);
-  const [configured, setConfigured] = useState(false), [key, setKey] = useState(getAssistantKey());
+  const access = useAssistantCredentials();
+  const { status: { configured }, key } = access;
   const [web, setWeb] = useState(initial.web), [logMeal, setLogMeal] = useState(initial.logMeal), [meal, setMeal] = useState(initial.meal);
   const [entryDate, setEntryDate] = useState(initial.date), [time, setTime] = useState(initial.time);
   const [reviewed, setReviewed] = useState(false), [settingsOpen, setSettingsOpen] = useState(false), [historyOpen, setHistoryOpen] = useState(false), [historyQuery, setHistoryQuery] = useState('');
@@ -59,7 +61,7 @@ function AssistantConversation({ state, initial, chats, persist, select, onClose
   const [storageError, setStorageError] = useState(''), [stored, setStored] = useState(true);
   const pending = useRef<AbortController | null>(null), end = useRef<HTMLDivElement>(null), saveLock = useRef(false);
   const ids = useRef<string[]>(initial.entryIds);
-  useEffect(() => { void assistantConfigured().then(setConfigured).catch(() => {}); return () => pending.current?.abort(); }, []);
+  useEffect(() => () => pending.current?.abort(), []);
   useEffect(() => { end.current?.scrollIntoView({ block: 'nearest', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' }); }, [messages.length, busy]);
   const recipeId = ids.current[0] ? assistantRecipeId(ids.current[0]) : '';
   const savedRecipe = state.recipes.find(r => r.id === recipeId || items.length === 1 && r.id === items[0].recipeId);
@@ -83,7 +85,7 @@ function AssistantConversation({ state, initial, chats, persist, select, onClose
   }
   async function sendMessage(text: string) {
     if (!text || busy || saving) return;
-    setError(''); setBusy(true); setAssistantKey(key);
+    setError(''); setBusy(true);
     setListHelp(false);
     const previous = pendingReply && messages.at(-1)?.role === 'user' ? messages.slice(0, -1) : messages;
     const next: ChatMessage[] = [...previous, { role: 'user', content: text }];
@@ -143,10 +145,7 @@ function AssistantConversation({ state, initial, chats, persist, select, onClose
     <div className="assistant-workspace">
     {historyOpen && <aside className="assistant-history" aria-label="Conversation history"><h3>Conversations</h3><label className="assistant-history-search"><Search size={15} /><input aria-label="Search conversations" value={historyQuery} onChange={e => setHistoryQuery(e.target.value)} placeholder="Search chats" /></label><div className="assistant-history-list">{[...chats].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).filter(c => chatTitle(c).toLowerCase().includes(historyQuery.toLowerCase())).map(c => <button key={c.id} aria-current={c.id === initial.id ? 'true' : undefined} disabled={busy || saving} onClick={() => void select(c)}><strong>{chatTitle(c)}</strong><span>{new Date(c.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · {c.savedAt ? 'Meal saved' : 'Conversation'}</span></button>)}{!chats.length && <p>Your chats will appear here.</p>}</div></aside>}
     <div className="assistant-scroll">
-    {settingsOpen && <section className="assistant-setup" aria-label="Assistant settings"><h3>AI settings</h3>
-      <Field label="Groq API key" hint="Session only. Your key is never saved in chat history."><input type="password" autoComplete="off" spellCheck={false} value={key} placeholder={configured ? 'Server key configured' : 'gsk_…'} onChange={e => { setKey(e.target.value); setAssistantKey(e.target.value); }} /></Field>
-      <p className="muted">AI receives this conversation and matching foods. Online research may use extra Groq quota. <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">Get a key ↗</a></p>
-    </section>}
+    {settingsOpen && <AssistantKeySettings access={access} />}
     {!configured && key.trim().length < 20 && !settingsOpen && <p className="assistant-key-notice">Add your API key in <button onClick={() => setSettingsOpen(true)}>AI settings</button> to chat. Food list search works without a key.</p>}
     {!messages.length && <div className="assistant-intro"><Sparkles size={30} /><h3>What’s on your plate?</h3><p>Describe your meal. We’ll work out the details together.</p></div>}
     <div className="assistant-chat" role="log" aria-label="Food conversation">{messages.map((m, i) => <div className={`assistant-message ${m.role}`} key={i}><small>{m.role === 'user' ? 'You' : <><Sparkles size={13} />Steady</>}</small><div className="assistant-message-content">{m.role === 'assistant' ? <AssistantReply content={m.content} /> : <p>{m.content}</p>}</div></div>)}

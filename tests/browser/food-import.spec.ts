@@ -34,7 +34,8 @@ test('review a sourced food, save a weighed serving, log its time and use it off
   await page.getByRole('button', { name: 'Add to diary', exact: true }).click();
   await page.getByRole('button', { name: 'Food diary', exact: true }).click();
   await expect(page.locator('.diary-entry')).toContainText('10:35');
-  await page.getByRole('button', { name: 'Edit My carrot cake slice' }).click();
+  await page.locator('summary[aria-label="Actions for My carrot cake slice"]').click();
+  await page.locator('.entry-actions-menu').getByRole('button', { name: 'Edit', exact: true }).click();
   await expect(page.getByLabel('Time eaten')).toHaveValue('10:35');
   await page.getByRole('button', { name: 'Close dialog' }).click();
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });

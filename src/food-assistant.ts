@@ -10,6 +10,12 @@ import { recipeFromAssistant, type AssistantRecipeOptions } from './assistant-re
 let sessionKey = '';
 export const getAssistantKey = () => sessionKey;
 export const setAssistantKey = (key: string) => { sessionKey = key.trim(); };
+let keyAccount: string | null | undefined;
+cloud?.auth.onAuthStateChange((event, session) => {
+  const next = session?.user.id ?? null;
+  if (event === 'SIGNED_OUT' || keyAccount !== undefined && keyAccount !== next) sessionKey = '';
+  keyAccount = next;
+});
 async function destination() {
   const mode = await readMetadata<string>('syncMode');
   if (mode === 'local') {
@@ -20,10 +26,21 @@ async function destination() {
   const base = Capacitor.isNativePlatform() ? (import.meta.env.VITE_FOOD_API_URL || 'https://fitness-tracker-one-steel.vercel.app').replace(/\/$/, '') : '';
   return { url: `${base}/api/food-assistant`, token: data.session?.access_token };
 }
-export async function assistantConfigured() {
+export type AssistantStatus = { configured: boolean; savedKey: boolean; canSaveKey: boolean; signedIn: boolean };
+export async function assistantStatus(): Promise<AssistantStatus> {
   const { url, token } = await destination();
-  const response = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {}, signal: AbortSignal.timeout(10000) });
-  return response.ok && (await response.json()).configured === true;
+  const response = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {}, signal: AbortSignal.timeout(20000) });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || 'Could not check your saved key.');
+  return { configured: result.configured === true, savedKey: result.savedKey === true, canSaveKey: result.canSaveKey === true, signedIn: result.signedIn === true };
+}
+export async function updateAssistantKey(key: string | null): Promise<AssistantStatus> {
+  const { url, token } = await destination();
+  const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify(key === null ? { action: 'remove_key' } : { action: 'save_key', apiKey: key.trim() }), signal: AbortSignal.timeout(25000) });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || 'Could not save your key. Please try again.');
+  return result;
 }
 export async function askAssistant(state: State, messages: ChatMessage[], draft: DraftItem[], webSearch: boolean, signal: AbortSignal) {
   if (!navigator.onLine) throw new Error('AI needs internet. Find a list in your saved foods and offline catalog instead.');

@@ -291,16 +291,27 @@ A recent “Health data checked” time means Steady read Health Connect. It doe
 
 ## Groq food assistant setup
 
-Use **Food diary → Ask about food**, **Food library → Find foods with AI**, or **Log food → Describe a meal or paste a list**. The assistant keeps the conversation while the dialog is open. You can correct the restaurant, ingredients or portion before reviewing and saving. See [food assistant workflow](food-import.md#conversational-food-assistant).
+Open **Ask Steady → AI settings**. Sign in with the same Hosted sync account on your phone and desktop, paste your Groq key, and press **Save encrypted key**. The other device picks up the saved status on opening/returning to the assistant or within 30 seconds while it is visible. The key field stays blank after saving; Steady uses the saved key on the server without downloading it to the other browser. Use **Replace encrypted key** or **Remove saved key** in the same settings. Removal deletes Steady's saved copy; it does not revoke the key at Groq.
 
-For a quick trial, enter a key from [Groq Console](https://console.groq.com/keys) in **Groq connection** inside the assistant. This key lasts only for the current app session. Do not paste it into chat or commit it.
+A key entered in the old version was only held in memory. Enter it once more in the updated app and explicitly save it. Without a saved account key, a typed key still works temporarily for the current session and is cleared on sign-out/account changes. Never paste your key into a conversation.
 
-For everyday use without entering the key again:
+### Encrypted account storage (one-time hosting setup)
 
-1. In **Vercel → project → Settings → Environment Variables**, add **GROQ_API_KEY** for Production. This is a server secret: **do not prefix it with VITE_**.
-2. In **Supabase → Authentication → Users**, copy your own user's **UUID** (not email, password or project ID). Add it in Vercel as **GROQ_ALLOWED_USER_IDS**. Multiple allowed users can be comma-separated. The function validates the signed-in user with Supabase before using the server key. An empty allowlist permits nobody.
-3. Redeploy the website. Sign into the same Steady account on desktop and phone. The updated assistant should show **Groq connection · ready**. No database migration is needed.
-4. Use **Send** for conversation. Start with menu research off; the saved library, USDA and packaged lookups are available without web research. **Research menus online** enables a separate Groq browser-search request, subject to your account's support and quota.
+1. Run [supabase/assistant-credentials.sql](../supabase/assistant-credentials.sql) in your project's Supabase SQL editor. It creates a separate table with owner-only row access; existing diaries are unchanged. The script is safe to run again.
+2. Generate 32 random bytes as base64 and add **STEADY_CREDENTIAL_ENCRYPTION_KEY** as a **Sensitive** Production environment variable in Vercel. For example, from the linked project directory:
+
+   ```sh
+   node --input-type=module -e 'import { randomBytes } from "node:crypto"; process.stdout.write(randomBytes(32).toString("base64"))' | vercel env add STEADY_CREDENTIAL_ENCRYPTION_KEY production --sensitive
+   ```
+
+3. Keep **VITE_SUPABASE_URL** and **VITE_SUPABASE_PUBLISHABLE_KEY** configured, then redeploy. The encryption secret must **never** have a `VITE_` prefix or be committed to Git. No Supabase service-role key is required.
+4. Sign in to Steady and save the Groq key through AI settings. This setup is already applied to the current production project on 16 October 2026.
+
+Stored keys use AES-256-GCM with a fresh random nonce and account/project-bound authenticated data. The server verifies the Supabase user and accesses ciphertext with that user's token, so database row security applies too. Plaintext is used only while handling the request and forwarded to Groq over HTTPS. It is not saved in browser storage, the diary, chat history or backups, and no API returns it. This is server-side encryption at rest, not end-to-end encryption: the trusted server can decrypt the key to call Groq.
+
+Keep the encryption environment variable stable across deployments. Replacing or losing it makes existing ciphertext unreadable; users must replace their saved Groq key afterward. Never generate it on every build. For another hosted installation using the same credential table, use the same encryption secret and Supabase project URL. A local paired server can continue using the server environment key described below; account key storage applies to Hosted sync.
+
+Optional alternative: set server-only **GROQ_API_KEY** plus **GROQ_ALLOWED_USER_IDS** (comma-separated Supabase user UUIDs) in Vercel, then redeploy. Only verified allowlisted accounts can use that shared server key. An account's own saved key takes precedence. An empty allowlist permits nobody. No credential table is needed for this alternative.
 
 The implementation uses `openai/gpt-oss-20b`, with tool lookups followed by a separate strict JSON response. Groq's free access has rate/usage limits; check your account rather than assuming unlimited free searches. The app has no automatic paid fallback. Model failures leave the proposal unsaved. [Groq structured outputs](https://console.groq.com/docs/structured-outputs), [browser search](https://console.groq.com/docs/tool-use/built-in-tools/browser-search).
 

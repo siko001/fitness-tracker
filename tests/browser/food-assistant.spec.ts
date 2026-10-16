@@ -62,7 +62,7 @@ test('conversation clarifies, changes a portion, requires review and reuses a sa
 test('list lookup works offline and failed AI replies retain the unsaved correction without storing the key', async ({ page, context }) => {
   await page.route('**/api/food-assistant', route => route.fulfill({ status: route.request().method() === 'GET' ? 200 : 429, json: route.request().method() === 'GET' ? { configured: false } : { error: 'Usage limit reached. Try later.' } }));
   await page.goto('/#foods');
-  await page.getByRole('button', { name: 'Find foods with AI', exact: true }).click();
+  await page.getByRole('button', { name: 'Open food assistant', exact: true }).click();
   await page.getByRole('button', { name: 'Search food list', exact: true }).click();
   await expect(page.getByRole('note')).toContainText('Enter one food per line');
   await expect(page.getByLabel('Message the food assistant')).toBeFocused();
@@ -80,12 +80,13 @@ test('list lookup works offline and failed AI replies retain the unsaved correct
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   await page.reload(); await page.waitForFunction(() => !!navigator.serviceWorker.controller);
   await context.setOffline(true); await page.reload();
-  await page.getByRole('button', { name: 'Find foods with AI', exact: true }).click();
+  await page.getByRole('button', { name: 'Open food assistant', exact: true }).click();
   await page.getByRole('button', { name: 'Assistant settings', exact: true }).click();
   await expect(page.getByLabel('Groq API key', { exact: true })).toHaveValue('');
   await message.fill('Chicken breast 200 g\nOlive oil 10 g');
   await page.getByRole('button', { name: 'Search food list', exact: true }).click();
   await expect(page.locator('.assistant-food')).toHaveCount(2);
+  await page.getByLabel('Also log what I ate').uncheck();
   await expect(page.getByRole('button', { name: 'Save to library', exact: true })).toBeDisabled();
   await page.getByLabel('I’ve checked the matches, portions and any estimates.').check();
   await page.getByRole('button', { name: 'Save to library', exact: true }).click();
@@ -284,7 +285,7 @@ test('an AI meal can become a recipe after logging without duplicating the diary
   await expect(page.locator('.assistant-save').getByRole('button', { name: 'Saved', exact: true })).toBeDisabled();
 });
 
-test('diary foods drag between meals and offer a phone menu to move or save a recipe', async ({ page }) => {
+test('diary foods drag between meals and offer a compact phone menu for move, edit and delete', async ({ page }) => {
   await page.route('**/api/food-assistant', route => route.fulfill({ json: route.request().method() === 'GET' ? { configured: true } : proposal(350) }));
   await page.goto('/#diary');
   await page.getByRole('button', { name: 'Open food assistant', exact: true }).click();
@@ -305,23 +306,65 @@ test('diary foods drag between meals and offer a phone menu to move or save a re
   await page.screenshot({ path: 'test-results/diary-move-desktop.png' });
   await page.setViewportSize({ width: 390, height: 844 });
   await dinner.locator('summary').click();
-  await dinner.getByRole('button', { name: 'Move to snacks', exact: true }).click();
+  await dinner.getByRole('button', { name: 'Move', exact: true }).click();
+  await dinner.getByRole('button', { name: 'Snacks', exact: true }).click();
   const snack = page.locator('.meal[data-meal="Snacks"]');
   await expect(snack.locator('.diary-entry')).toHaveCount(1);
   await snack.locator('summary').focus(); await page.keyboard.press('Enter');
-  await expect(snack.getByRole('button', { name: 'Save as recipe', exact: true })).toBeInViewport();
+  await expect(snack.getByRole('button', { name: 'Edit', exact: true })).toBeInViewport();
+  await expect(snack.getByRole('button', { name: 'Save as recipe', exact: true })).toHaveCount(0);
   await page.screenshot({ path: 'test-results/diary-entry-menu-mobile.png' });
-  await snack.getByRole('button', { name: 'Save as recipe', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'New recipe', exact: true })).toBeVisible();
-  await expect(page.getByLabel('Recipe name')).toHaveValue('Tuna ftira · Panina');
-  await expect(page.getByLabel('Finished dish weight (g)')).toHaveValue('350');
-  await expect(page.locator('.ingredients')).toContainText('350 g');
-  await page.getByRole('button', { name: 'Save recipe', exact: true }).click();
-  await expect(page.locator('.diary-entry')).toHaveCount(1);
+  await snack.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Edit entry', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Amount eaten (g)')).toHaveValue('350');
+  await page.getByRole('button', { name: 'Close dialog' }).click();
   await page.reload();
   await expect(snack.locator('.diary-entry')).toHaveCount(1);
   await expect(snack.locator('.diary-entry')).toContainText('19:27');
   await snack.locator('summary').click();
-  await expect(snack.getByRole('button', { name: 'Save as recipe', exact: true })).not.toBeVisible();
+  await snack.getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Remove Tuna ftira · Panina?', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await expect(snack.locator('.diary-entry')).toHaveCount(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('encrypted key save is shared across devices without exposing the key on reload or in a chat request', async ({ browser }) => {
+  const mobile = await browser.newContext({ viewport: { width: 390, height: 844 } }), desktop = await browser.newContext();
+  let saved = false;
+  const secret = 'gsk_fake_browser_test_key_only';
+  const route = async (route: any) => {
+    const body = route.request().method() === 'POST' ? route.request().postDataJSON() : null;
+    if (body?.action === 'save_key') { expect(body.apiKey).toBe(secret); saved = true; }
+    else if (body?.action === 'remove_key') saved = false;
+    else if (body) { expect(body.apiKey).toBeUndefined(); return route.fulfill({ json: { reply: 'What would you like to log?', draft: [], items: [], warnings: [] } }); }
+    return route.fulfill({ json: { configured: saved, savedKey: saved, canSaveKey: true, signedIn: true } });
+  };
+  await mobile.route('**/api/food-assistant', route); await desktop.route('**/api/food-assistant', route);
+  const a = await mobile.newPage(), b = await desktop.newPage();
+  for (const page of [a, b]) { await page.goto('http://localhost:4175/#foods'); await expect(page.getByRole('button', { name: 'Find foods with AI', exact: true })).toHaveCount(0); await expect(page.locator('.topbar').getByRole('button', { name: 'Log food', exact: true })).toHaveCount(0); await page.getByRole('button', { name: 'Open food assistant', exact: true }).click(); await page.getByRole('button', { name: 'Assistant settings', exact: true }).click(); }
+  await a.getByLabel('Groq API key', { exact: true }).fill(secret);
+  await a.getByRole('button', { name: 'Save encrypted key', exact: true }).click();
+  await expect(a.getByText('Encrypted key saved to your account.', { exact: false })).toBeVisible();
+  await expect(a.getByLabel('Groq API key', { exact: true })).toHaveValue('');
+  await b.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(b.getByText('Encrypted key saved to your account.', { exact: false })).toBeVisible();
+  await expect(b.getByLabel('Groq API key', { exact: true })).toHaveValue('');
+  await b.getByLabel('Message the food assistant').fill('Hello'); await b.getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(b.locator('.assistant-message.assistant')).toContainText('What would you like to log?');
+  await a.reload(); await a.getByRole('button', { name: 'Open food assistant', exact: true }).click(); await a.getByRole('button', { name: 'Assistant settings', exact: true }).click();
+  await expect(a.getByText('Encrypted key saved to your account.', { exact: false })).toBeVisible();
+  await a.screenshot({ path: 'test-results/encrypted-key-mobile.png' });
+  await a.getByRole('button', { name: 'Remove saved key', exact: true }).click();
+  await expect(a.getByText('Save once to use Groq on your signed-in devices.')).toBeVisible();
+  await b.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(b.getByText('Save once to use Groq on your signed-in devices.')).toBeVisible();
+  for (const page of [a, b]) {
+    expect(await page.evaluate(async () => {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => { const req = indexedDB.open('steady-fitness'); req.onsuccess = () => resolve(req.result); req.onerror = reject; });
+      const values = await new Promise(resolve => { const req = db.transaction('app').objectStore('app').getAll(); req.onsuccess = () => resolve(req.result); }); db.close();
+      return JSON.stringify([values, { ...localStorage }]);
+    })).not.toContain(secret);
+  }
+  await mobile.close(); await desktop.close();
 });

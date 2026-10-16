@@ -10,7 +10,7 @@
     "local": "node server/local.mjs",
     "local:build": "npm run build && npm run local",
     "test": "vitest run",
-    "test:assistant": "node --test tests/assistant/server.test.mjs",
+    "test:assistant": "node --test tests/assistant/*.test.mjs",
     "test:e2e": "playwright test",
     "native:sync": "npm run build && cap sync",
     "android": "cap open android",

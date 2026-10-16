@@ -374,7 +374,13 @@
 .entry-actions-menu > span { display: block; padding: 6px 9px; font-size: 11px; color: var(--muted); }
 .entry-actions-menu button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; text-align: left; border-radius: 6px; padding: 9px; background: transparent; color: var(--ink); font-size: 12px; }
 .entry-actions-menu button:hover:not(:disabled) { background: var(--surface-soft, #f1f4ee); }
-.entry-actions-menu .entry-recipe-action { border-top: 1px solid var(--line); border-radius: 0; margin-top: 5px; }
+.entry-actions-menu .entry-delete-action { border-top: 1px solid var(--line); border-radius: 0; margin-top: 5px; color: var(--danger, #b45d50); }
+.assistant-key-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.macro-card { container-type: inline-size; }
+.macro-numbers { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(8px, 4cqi, 24px); }
+.macro-numbers > div { min-width: 0; align-content: start; }
+.macro-numbers strong { white-space: nowrap; font-size: clamp(18px, 7cqi, 28px); }
+.macro-numbers strong small { font-size: .45em; }
 @media (max-width: 680px) {
   .assistant-launcher { right: calc(16px + var(--app-safe-right)); bottom: calc(88px + var(--app-safe-bottom)); width: 52px; padding: 14px; justify-content: center; }
   .assistant-launcher span, .entry-drag-handle { display: none; }
