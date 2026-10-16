@@ -63,11 +63,15 @@ test('list lookup works offline and failed AI replies retain the unsaved correct
   await page.route('**/api/food-assistant', route => route.fulfill({ status: route.request().method() === 'GET' ? 200 : 429, json: route.request().method() === 'GET' ? { configured: false } : { error: 'Usage limit reached. Try later.' } }));
   await page.goto('/#foods');
   await page.getByRole('button', { name: 'Find foods with AI', exact: true }).click();
+  await page.getByRole('button', { name: 'Search food list', exact: true }).click();
+  await expect(page.getByRole('note')).toContainText('Enter one food per line');
+  await expect(page.getByLabel('Message the food assistant')).toBeFocused();
   await page.getByRole('button', { name: 'Assistant settings', exact: true }).click();
   await page.getByLabel('Groq API key', { exact: true }).fill('gsk_example_not_a_real_key_123456');
   const message = page.getByLabel('Message the food assistant');
   await message.fill('Chicken breast 200 g\nOlive oil 10 g');
-  await page.getByRole('button', { name: 'Find list', exact: true }).click();
+  await page.getByRole('button', { name: 'Search food list', exact: true }).click();
+  await expect(page.getByRole('note')).not.toBeVisible();
   await expect(page.locator('.assistant-food')).toHaveCount(2);
   await message.fill('Half the chicken, please.'); await page.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Usage limit reached');
@@ -80,12 +84,53 @@ test('list lookup works offline and failed AI replies retain the unsaved correct
   await page.getByRole('button', { name: 'Assistant settings', exact: true }).click();
   await expect(page.getByLabel('Groq API key', { exact: true })).toHaveValue('');
   await message.fill('Chicken breast 200 g\nOlive oil 10 g');
-  await page.getByRole('button', { name: 'Find list', exact: true }).click();
+  await page.getByRole('button', { name: 'Search food list', exact: true }).click();
   await expect(page.locator('.assistant-food')).toHaveCount(2);
   await expect(page.getByRole('button', { name: 'Save to library', exact: true })).toBeDisabled();
   await page.getByLabel('I’ve checked the matches, portions and any estimates.').check();
   await page.getByRole('button', { name: 'Save to library', exact: true }).click();
   await expect(page.getByRole('dialog')).not.toBeVisible();
+});
+
+test('an incomplete estimate from saved history can be prepared and explicitly saved', async ({ page }) => {
+  const requests: any[] = [];
+  await page.route('**/api/food-assistant', route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { configured: true } });
+    requests.push(route.request().postDataJSON());
+    // Reproduce the old response so recovery also works in existing histories.
+    return route.fulfill({ json: requests.length === 1
+      ? { reply: 'About 530 kcal. Hit Save.', items: [], draft: [], warnings: ['Tuna Ftira still needs nutrition information or an agreed estimate.'] }
+      : proposal(350) });
+  });
+  await page.goto('/#diary');
+  const open = () => page.getByRole('button', { name: 'Ask about food', exact: true }).click();
+  await open();
+  await page.getByLabel('Message the food assistant').fill('Tuna ftira from Panina, 350g');
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
+  const prepare = page.getByRole('button', { name: 'Prepare meal preview', exact: true });
+  await expect(prepare).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Save & log meal', exact: true })).not.toBeVisible();
+  await expect(page.locator('.assistant-autosave')).toHaveText('Saved on this device');
+  await page.reload(); await open();
+  await expect(prepare).toBeEnabled();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(prepare).toBeInViewport();
+  await prepare.click();
+  await expect(page.getByLabel('Grams · Tuna ftira')).toHaveValue('350');
+  expect(requests[1].messages[0].content).toContain('350g');
+  expect(requests[1].messages.at(-1).content).toContain('labelled estimate');
+  await expect(page.locator('.assistant-portion')).toContainText('805 kcal');
+  await expect(prepare).not.toBeVisible();
+  await expect(page.locator('.assistant-food')).toContainText('Estimated nutrition');
+  const save = page.getByRole('button', { name: 'Save & log meal', exact: true });
+  await expect(save).toBeDisabled();
+  await expect(page.locator('.assistant-save')).toContainText('Check the review box');
+  await page.screenshot({ path: 'test-results/assistant-preview-recovery-mobile.png' });
+  await page.getByLabel('I’ve checked the matches, portions and any estimates.').check();
+  await save.click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  await expect(page.locator('.diary-entry')).toHaveCount(1);
+  await expect(page.locator('.diary-entry')).toContainText('Tuna ftira · Panina');
 });
 
 

@@ -322,6 +322,7 @@
 .assistant-composer .assistant-send-button { position: absolute; right: 12px; bottom: 14px; min-height: 40px; height: 40px; width: 40px; padding: 0; border-radius: 10px; }
 .assistant-composer-tools { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; padding: 8px 2px 0; }
 .assistant-composer-tools .text-button { font-size: 12px; min-height: 30px; }
+.assistant-list-help { margin: 4px 2px 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
 .assistant-composer-tools .assistant-web { margin: 0; font-size: 12px; gap: 7px; }
 .assistant-web input { width: 16px; height: 16px; }
 .assistant-keyboard-hint { margin-left: auto; font-size: 10px; color: var(--muted); }

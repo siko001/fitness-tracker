@@ -53,6 +53,7 @@ function AssistantConversation({ state, initial, chats, persist, select, onClose
   const [web, setWeb] = useState(initial.web), [logMeal, setLogMeal] = useState(initial.logMeal), [meal, setMeal] = useState(initial.meal);
   const [entryDate, setEntryDate] = useState(initial.date), [time, setTime] = useState(initial.time);
   const [reviewed, setReviewed] = useState(false), [settingsOpen, setSettingsOpen] = useState(false), [historyOpen, setHistoryOpen] = useState(false), [historyQuery, setHistoryQuery] = useState('');
+  const [listHelp, setListHelp] = useState(false);
   const [storageError, setStorageError] = useState(''), [stored, setStored] = useState(true);
   const pending = useRef<AbortController | null>(null), end = useRef<HTMLDivElement>(null), saveLock = useRef(false);
   const ids = useRef<string[]>(initial.entryIds);
@@ -69,9 +70,12 @@ function AssistantConversation({ state, initial, chats, persist, select, onClose
   }, [serialized, persist]);
   function showItems(next: ResolvedItem[]) { setItems(next); ids.current = next.map(() => uid()); setReviewed(false); setSavedAt(null); }
   async function send(e: FormEvent) {
-    e.preventDefault(); if (!input.trim() || busy) return;
+    e.preventDefault(); await sendMessage(input.trim());
+  }
+  async function sendMessage(text: string) {
+    if (!text || busy || saving) return;
     setError(''); setBusy(true); setAssistantKey(key);
-    const text = input.trim();
+    setListHelp(false);
     const previous = pendingReply && messages.at(-1)?.role === 'user' ? messages.slice(0, -1) : messages;
     const next: ChatMessage[] = [...previous, { role: 'user', content: text }];
     setMessages(next); setInput(''); setPendingReply(true);
@@ -85,7 +89,9 @@ function AssistantConversation({ state, initial, chats, persist, select, onClose
     finally { setBusy(false); }
   }
   async function findList() {
-    if (busy || !input.trim()) return;
+    if (busy || saving) return;
+    if (!input.trim()) { setListHelp(true); document.getElementById('food-chat')?.focus(); return; }
+    setListHelp(false);
     setBusy(true); setError('');
     try {
       const rawLines = input.split(/\n|;/).filter(x => x.trim());
@@ -131,7 +137,7 @@ function AssistantConversation({ state, initial, chats, persist, select, onClose
       <Field label="Groq API key" hint="Session only. Your key is never saved in chat history."><input type="password" autoComplete="off" spellCheck={false} value={key} placeholder={configured ? 'Server key configured' : 'gsk_…'} onChange={e => { setKey(e.target.value); setAssistantKey(e.target.value); }} /></Field>
       <p className="muted">AI receives this conversation and matching foods. Online research may use extra Groq quota. <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer">Get a key ↗</a></p>
     </section>}
-    {!configured && key.trim().length < 20 && !settingsOpen && <p className="assistant-key-notice">Add your API key in <button onClick={() => setSettingsOpen(true)}>AI settings</button> to chat. Find list works without it.</p>}
+    {!configured && key.trim().length < 20 && !settingsOpen && <p className="assistant-key-notice">Add your API key in <button onClick={() => setSettingsOpen(true)}>AI settings</button> to chat. Food list search works without a key.</p>}
     {!messages.length && <div className="assistant-intro"><Sparkles size={30} /><h3>What’s on your plate?</h3><p>Describe your meal. We’ll work out the details together.</p></div>}
     <div className="assistant-chat" role="log" aria-label="Food conversation">{messages.map((m, i) => <div className={`assistant-message ${m.role}`} key={i}><small>{m.role === 'user' ? 'You' : <><Sparkles size={13} />Steady</>}</small><div className="assistant-message-content">{m.role === 'assistant' ? <AssistantReply content={m.content} /> : <p>{m.content}</p>}</div></div>)}
       {busy && <div className="assistant-message assistant assistant-typing" role="status"><small><Sparkles size={13} />Steady</small><span className="typing-dots" aria-hidden="true"><i /><i /><i /></span><span className="sr-only">Steady is replying…</span></div>}
@@ -156,7 +162,9 @@ function AssistantConversation({ state, initial, chats, persist, select, onClose
     <ModalActions className="assistant-footer"><form onSubmit={send}>
       <div className="assistant-composer"><label className="sr-only" htmlFor="food-chat">Message the food assistant</label><textarea id="food-chat" value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && (configured || key.trim().length >= 20)) { e.preventDefault(); void send(e); } }} maxLength={6000} rows={2} placeholder="Tell me about your meal…" disabled={saving || busy} />
       <button className="button primary assistant-send-button" aria-label="Send" disabled={busy || saving || !input.trim() || (!configured && key.trim().length < 20)}><ArrowUp size={19} /></button></div>
-      <div className="assistant-composer-tools"><button type="button" className="text-button" disabled={busy || saving || !input.trim()} onClick={() => void findList()}>Find list</button><label className="check-field assistant-web"><input type="checkbox" checked={web} onChange={e => setWeb(e.target.checked)} />Research menus online</label><span className="assistant-keyboard-hint">Enter to send · Shift + Enter for a new line</span></div>
-    </form>{items.length > 0 && <div className="assistant-save"><span>{savedAt ? 'This meal has been saved.' : 'Review the portions before saving.'}</span><button className="button primary" disabled={!!savedAt || !reviewed || pendingReply || busy || saving || !!input.trim() || (logMeal && items.some(item => !item.grams || item.grams <= 0 || item.grams > 100000))} onClick={() => void save()}>{saving ? 'Saving…' : savedAt ? 'Saved' : logMeal ? 'Save & log meal' : 'Save to library'}</button></div>}</ModalActions>
+      <div className="assistant-composer-tools"><button type="button" className="text-button" disabled={busy || saving} title="Search saved foods and the offline catalog. Enter one food per line." aria-describedby={listHelp ? 'assistant-list-help' : undefined} onClick={() => void findList()}>Search food list</button><label className="check-field assistant-web"><input type="checkbox" checked={web} onChange={e => setWeb(e.target.checked)} />Research menus online</label><span className="assistant-keyboard-hint">Enter to send · Shift + Enter for a new line</span></div>
+      {listHelp && <p className="assistant-list-help" id="assistant-list-help" role="note">Enter one food per line, e.g. <strong>Chicken breast 150 g</strong>, then choose <strong>Search food list</strong>. Searches your library and the offline catalog, without AI.</p>}
+    </form>{!items.length && warnings.length > 0 && !pendingReply && <div className="assistant-save assistant-retry"><span>Prepare a preview with a labelled estimate if needed.</span><button className="button secondary" disabled={busy || saving || !!input.trim() || (!configured && key.trim().length < 20)} onClick={() => void sendMessage('Please prepare the meal from our conversation for review. Use a clearly labelled estimate if exact nutrition is unavailable, keeping the portion I gave you. Ask me for any missing portion details.')} >Prepare meal preview</button></div>}
+    {items.length > 0 && <div className="assistant-save"><span>{savedAt ? 'This meal has been saved.' : !reviewed ? 'Check the review box above to enable Save.' : 'Ready to save.'}</span><button className="button primary" disabled={!!savedAt || !reviewed || pendingReply || busy || saving || !!input.trim() || (logMeal && items.some(item => !item.grams || item.grams <= 0 || item.grams > 100000))} onClick={() => void save()}>{saving ? 'Saving…' : savedAt ? 'Saved' : logMeal ? 'Save & log meal' : 'Save to library'}</button></div>}</ModalActions>
   </div>;
 }

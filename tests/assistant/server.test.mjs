@@ -20,6 +20,70 @@ test('new AI food is always marked estimated and cannot invent source links', ()
   assert.equal(result.items[0].food.estimated, true); assert.equal(result.items[0].food.source, 'AI estimate · Groq');
   assert.equal(result.items[0].food.sourceUrl, undefined); assert.equal(result.items[0].food.researchUrls, undefined);
 });
+test('incomplete proposals cannot claim that the meal is ready to save', () => {
+  const missing = { ...item, ref: null, grams: 350, per100: null };
+  for (const items of [[missing], [item, missing]]) {
+    const result = resolveProposal({ reply: 'About 530 kcal. Hit Save.', items }, new Map([['food:panina', { food }]]), [food]);
+    assert(!result.reply.includes('530') && !result.reply.includes('Hit Save'));
+    assert.equal(result.items.length, items.length - 1);
+    assert.equal(result.draft.length, result.items.length);
+    assert.match(result.warnings[0], /nutrition details are missing/);
+  }
+});
+test('a conversational estimate with no nutrition fields is repaired into a reviewable portion', async () => {
+  const requests = [];
+  const missing = { ...item, ref: null, grams: 350, per100: null, portionLabel: '1 ftira' };
+  // These are test data, not verified restaurant nutrition. Values returned by
+  // the model must explicitly be per 100 g, distinct from its portion totals.
+  const estimate = { ...missing, per100: { kcal: 530 / 3.5, protein: 24 / 3.5, fat: 28 / 3.5, carbs: 46 / 3.5, fibre: 2 }, notes: 'Estimated typical bread and tuna filling; not verified Panina nutrition.' };
+  const result = await foodAssistant({ apiKey: 'not-a-real-key-for-test', foods: [], recipes: [], messages: [
+    { role: 'user', content: 'Tuna ftira from Panina' }, { role: 'assistant', content: 'What weight?' }, { role: 'user', content: '350g' },
+  ] }, { fetcher: async (_, options) => {
+    const body = JSON.parse(options.body); requests.push(body);
+    const content = requests.length === 1 ? 'A 350 g estimate.' : JSON.stringify(requests.length === 2
+      ? { reply: 'About 530 kcal, 24 g protein, 28 g fat, 46 g carbs. Hit Save.', items: [missing] }
+      : { reply: 'Review the labelled 350 g estimate below.', items: [estimate] });
+    return Response.json({ choices: [{ message: { content }, finish_reason: 'stop' }] });
+  } });
+  assert.equal(requests.length, 3);
+  assert.equal(requests[2].response_format.type, 'json_object');
+  assert(requests[2].messages.at(-1).content.includes('Validation feedback'));
+  assert(requests[2].messages.some(m => m.content === '350g'));
+  assert.equal(result.items[0].grams, 350);
+  assert.equal(Math.round(result.items[0].food.per100.kcal * 3.5), 530);
+  assert.equal(result.items[0].food.brand, 'Panina');
+  assert.equal(result.items[0].food.estimated, true);
+  assert.equal(result.items[0].food.source, 'AI estimate · Groq');
+  assert.equal(result.items[0].food.sourceUrl, undefined);
+  assert.equal(result.warnings.length, 0);
+});
+test('semantic repair is bounded and a failed repair leaves an honest, unsaved response', async () => {
+  for (const failure of ['incomplete', 'invalid', 'quota']) {
+    let calls = 0;
+    const bad = { reply: 'Hit Save.', items: [{ ...item, ref: null, per100: null }] };
+    const result = await foodAssistant({ apiKey: 'not-a-real-key-for-test', foods: [], recipes: [], messages: [{ role: 'user', content: '350 g tuna ftira' }] }, { report() {}, fetcher: async () => {
+      calls++;
+      if (calls === 3 && failure === 'quota') return Response.json({ error: { code: 'rate_limit_exceeded' } }, { status: 429 });
+      const content = calls === 1 ? 'An estimate.' : calls === 3 && failure === 'invalid' ? '{not valid JSON' : JSON.stringify(bad);
+      return Response.json({ choices: [{ message: { content }, finish_reason: 'stop' }] });
+    } });
+    assert.equal(calls, 3);
+    assert.equal(result.items.length, 0);
+    assert.match(result.reply, /nothing ready to save yet/);
+    assert(!result.reply.includes('Hit Save'));
+    assert.equal(result.warnings.length, 1);
+  }
+});
+test('a genuine clarification without a proposal is returned without an estimate repair', async () => {
+  let calls = 0;
+  const result = await foodAssistant({ apiKey: 'not-a-real-key-for-test', foods: [], recipes: [], messages: [{ role: 'user', content: 'Tuna ftira. No estimates, please.' }] }, { fetcher: async () => {
+    calls++;
+    return Response.json({ choices: [{ message: { content: calls === 1 ? 'Please provide the label.' : JSON.stringify({ reply: 'Could you share the nutrition label?', items: [] }) }, finish_reason: 'stop' }] });
+  } });
+  assert.equal(calls, 2);
+  assert.equal(result.items.length, 0);
+  assert.equal(result.reply, 'Could you share the nutrition label?');
+});
 test('conversational follow-up uses saved match and strict output without mixing browser tools', async () => {
   const requests = [];
   const fetcher = async (url, options) => {
