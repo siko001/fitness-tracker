@@ -16,7 +16,7 @@ test('conversation clarifies, changes a portion, requires review and reuses a sa
   await page.getByRole('button', { name: 'Ask about food', exact: true }).click();
   const message = page.getByLabel('Message the food assistant'), send = page.getByRole('button', { name: 'Send', exact: true }), save = page.getByRole('button', { name: 'Save & log meal', exact: true });
   await message.fill('I am eating a tuna ftira from Panina.'); await send.click();
-  await expect(page.getByRole('log')).toContainText('What size'); await expect(save).toBeDisabled();
+  await expect(page.getByRole('log')).toContainText('What size'); await expect(save).not.toBeVisible();
   await message.fill('300 g, an estimate is fine.'); await send.click();
   await expect(page.getByLabel('Grams · Tuna ftira')).toHaveValue('300');
   await message.fill('Actually I only ate half of that.'); await send.click();
@@ -29,12 +29,12 @@ test('conversation clarifies, changes a portion, requires review and reuses a sa
   await page.getByLabel('Meal', { exact: true }).selectOption('Lunch');
   await page.getByLabel('Time eaten').fill('13:10');
   await page.getByLabel('I’ve checked the matches, portions and any estimates.').check();
-  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
   await page.screenshot({ path: 'test-results/assistant-desktop.png' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: 'test-results/assistant-mobile.png' });
   const header = (await page.locator('.modal-header').boundingBox())!, footer = (await page.locator('.modal-footer').boundingBox())!;
-  await page.locator('.modal-body').evaluate(el => el.scrollTop = el.scrollHeight);
+  await page.locator('.assistant-scroll').evaluate(el => el.scrollTop = el.scrollHeight);
   expect((await page.locator('.modal-header').boundingBox())!.y).toBe(header.y);
   expect((await page.locator('.modal-footer').boundingBox())!.y).toBe(footer.y);
   await expect(save).toBeInViewport();
@@ -48,6 +48,7 @@ test('conversation clarifies, changes a portion, requires review and reuses a sa
   await expect(page.locator('.diary-entry')).toContainText('Tuna ftira · Panina');
   await expect(page.locator('.diary-entry')).toContainText('13:10');
   await page.getByRole('button', { name: 'Ask about food', exact: true }).click();
+  await expect(page.locator('.assistant-save').getByRole('button', { name: 'Saved', exact: true })).toBeDisabled();
   await message.fill('Another half of my saved Panina ftira.'); await send.click();
   await expect(page.locator('.assistant-food')).toContainText('Already saved');
   expect(requests[3].foods.filter((f: any) => f.id === food.id)).toHaveLength(1);
@@ -62,6 +63,7 @@ test('list lookup works offline and failed AI replies retain the unsaved correct
   await page.route('**/api/food-assistant', route => route.fulfill({ status: route.request().method() === 'GET' ? 200 : 429, json: route.request().method() === 'GET' ? { configured: false } : { error: 'Usage limit reached. Try later.' } }));
   await page.goto('/#foods');
   await page.getByRole('button', { name: 'Find foods with AI', exact: true }).click();
+  await page.getByRole('button', { name: 'Assistant settings', exact: true }).click();
   await page.getByLabel('Groq API key', { exact: true }).fill('gsk_example_not_a_real_key_123456');
   const message = page.getByLabel('Message the food assistant');
   await message.fill('Chicken breast 200 g\nOlive oil 10 g');
@@ -75,6 +77,7 @@ test('list lookup works offline and failed AI replies retain the unsaved correct
   await page.reload(); await page.waitForFunction(() => !!navigator.serviceWorker.controller);
   await context.setOffline(true); await page.reload();
   await page.getByRole('button', { name: 'Find foods with AI', exact: true }).click();
+  await page.getByRole('button', { name: 'Assistant settings', exact: true }).click();
   await expect(page.getByLabel('Groq API key', { exact: true })).toHaveValue('');
   await message.fill('Chicken breast 200 g\nOlive oil 10 g');
   await page.getByRole('button', { name: 'Find list', exact: true }).click();
@@ -83,4 +86,90 @@ test('list lookup works offline and failed AI replies retain the unsaved correct
   await page.getByLabel('I’ve checked the matches, portions and any estimates.').check();
   await page.getByRole('button', { name: 'Save to library', exact: true }).click();
   await expect(page.getByRole('dialog')).not.toBeVisible();
+});
+
+
+test('chat history restores conversations, unsent drafts and portions across closing and reload', async ({ page }) => {
+  let release: (() => void) | undefined;
+  const waiting = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/food-assistant', async route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { configured: true } });
+    await waiting;
+    return route.fulfill({ json: { ...proposal(300), reply: '**Your ftira**\n\n- Estimated portion: **300 g**\n- Restaurant nutrition unavailable.\n\nCheck the details before saving.' } });
+  });
+  await page.goto('/#diary');
+  const open = () => page.getByRole('button', { name: 'Ask about food', exact: true }).click();
+  await open();
+  const message = page.getByLabel('Message the food assistant');
+  await message.fill('A whole tuna ftira from Panina, please.');
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(page.locator('.assistant-message.user')).toContainText('A whole tuna ftira');
+  await expect(page.locator('.assistant-typing')).toBeVisible();
+  const box = (await page.getByRole('dialog').boundingBox())!;
+  expect(box.width).toBeCloseTo(1440 * .95, 0); expect(box.height).toBeCloseTo(1080 * .95, 0);
+  await expect(page.getByText('Groq connection', { exact: false })).not.toBeVisible();
+  await expect(page.locator('.assistant-example')).toHaveCount(0);
+  release!();
+  await expect(page.locator('.assistant-message.assistant strong').first()).toHaveText('Your ftira');
+  await expect(page.locator('.assistant-message.assistant li')).toHaveCount(2);
+  await expect(page.locator('.assistant-typing')).not.toBeVisible();
+  const userColor = await page.locator('.assistant-message.user').evaluate(el => getComputedStyle(el).backgroundColor);
+  const aiColor = await page.locator('.assistant-message.assistant').evaluate(el => getComputedStyle(el).backgroundColor);
+  expect(userColor).not.toBe(aiColor);
+  await page.getByLabel('Grams · Tuna ftira').fill('275');
+  await page.getByLabel('Meal', { exact: true }).selectOption('Lunch');
+  await page.getByLabel('Time eaten').fill('13:30');
+  await page.getByLabel('I’ve checked the matches, portions and any estimates.').check();
+  await message.fill('Actually, less dressing.');
+  await expect(page.locator('.assistant-autosave')).toHaveText('Saved on this device');
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await open();
+  await expect(message).toHaveValue('Actually, less dressing.');
+  await expect(page.getByLabel('Grams · Tuna ftira')).toHaveValue('275');
+  await expect(page.getByLabel('Time eaten')).toHaveValue('13:30');
+  await expect(page.getByLabel('I’ve checked the matches, portions and any estimates.')).not.toBeChecked();
+  await page.reload(); await open();
+  await expect(message).toHaveValue('Actually, less dressing.');
+  await expect(page.getByRole('log')).toContainText('Your ftira');
+  await page.getByRole('button', { name: 'New chat', exact: true }).click();
+  await expect(message).toHaveValue('');
+  await expect(page.getByRole('log')).toBeEmpty();
+  await message.fill('An apple for a snack');
+  await expect(page.locator('.assistant-autosave')).toHaveText('Saved on this device');
+  await page.getByRole('button', { name: 'History', exact: true }).click();
+  await expect(page.getByRole('complementary', { name: 'Conversation history' }).getByRole('button')).toHaveCount(2);
+  await page.getByRole('button', { name: /A whole tuna ftira from Panina/ }).click();
+  await expect(message).toHaveValue('Actually, less dressing.');
+  await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
+  await expect(page.getByRole('button', { name: 'History', exact: true })).toHaveCSS('background-color', 'rgb(34, 37, 41)');
+  await page.screenshot({ path: 'test-results/assistant-history-desktop.png' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('button', { name: 'Send', exact: true })).toBeInViewport();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: 'test-results/assistant-history-mobile.png' });
+});
+
+test('closing during a reply keeps the pending message and retry does not duplicate it', async ({ page }) => {
+  let posts = 0, release: (() => void) | undefined;
+  const waiting = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/food-assistant', async route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { configured: true } });
+    if (++posts === 1) await waiting;
+    const body = route.request().postDataJSON();
+    expect(body.messages).toHaveLength(1);
+    await route.fulfill({ json: { reply: 'What size?', items: [], draft: [], warnings: [] } }).catch(() => {});
+  });
+  await page.goto('/#diary');
+  await page.getByRole('button', { name: 'Ask about food', exact: true }).click();
+  await page.getByLabel('Message the food assistant').fill('A tuna ftira');
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(page.locator('.assistant-typing')).toBeVisible();
+  await expect(page.locator('.assistant-autosave')).toHaveText('Saved on this device');
+  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  release!();
+  await page.getByRole('button', { name: 'Ask about food', exact: true }).click();
+  await expect(page.getByLabel('Message the food assistant')).toHaveValue('A tuna ftira');
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(page.getByRole('log')).toContainText('What size?');
+  await expect(page.locator('.assistant-message.user')).toHaveCount(1);
 });

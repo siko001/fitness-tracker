@@ -7,7 +7,7 @@ export function Logo({ small = false }: { small?: boolean }) {
   return <span className={`brand ${small ? 'small' : ''}`}><img src="/icon.svg" alt="" /><span>steady<span className="brand-dot">.</span></span></span>;
 }
 const ModalFooterContext = createContext<HTMLDivElement | null>(null);
-export function Modal({ title, subtitle, children, onClose }: { title: string; subtitle?: string; children: ReactNode; onClose: () => void }) {
+export function Modal({ title, subtitle, children, onClose, className = '' }: { title: string; subtitle?: string; children: ReactNode; onClose: () => void; className?: string }) {
   const ref = useRef<HTMLDialogElement>(null);
   const [footer, setFooter] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -15,7 +15,7 @@ export function Modal({ title, subtitle, children, onClose }: { title: string; s
     const previous = document.body.style.overflow; document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = previous; d.close(); };
   }, []);
-  return <dialog ref={ref} className="modal" onCancel={onClose} onClick={e => { if (e.target === e.currentTarget) { const r = e.currentTarget.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) onClose(); } }} aria-labelledby="modal-title">
+  return <dialog ref={ref} className={`modal ${className}`} onCancel={onClose} onClick={e => { if (e.target === e.currentTarget) { const r = e.currentTarget.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) onClose(); } }} aria-labelledby="modal-title">
     <header className="modal-header"><div><h2 id="modal-title">{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button className="icon-button" aria-label="Close dialog" onClick={onClose}><X size={21} /></button></header><ModalFooterContext.Provider value={footer}><div className="modal-body">{children}</div></ModalFooterContext.Provider><div className="modal-footer" ref={setFooter} />
   </dialog>;
 }

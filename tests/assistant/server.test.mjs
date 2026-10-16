@@ -82,6 +82,36 @@ test('malformed generated tool calls retry once; auth and quota failures do not 
     else { await assert.rejects(execute); assert.equal(calls, 1); }
   }
 });
+test('json_validate_failed recovers once even when the provider message never mentions a schema', async () => {
+  for (const fallback of ['valid', 'invalid', 'provider-error']) {
+    const requests = [], reports = [];
+    const execute = () => foodAssistant({ ...basicRequest, foods: [food] }, { report: d => reports.push(d), fetcher: async (_, options) => {
+      const body = JSON.parse(options.body); requests.push(body);
+      if (requests.length === 1) return Response.json({ choices: [{ message: { content: 'Review this portion.' }, finish_reason: 'stop' }] });
+      if (body.response_format.type === 'json_schema' || fallback === 'provider-error') return Response.json({ error: { code: 'json_validate_failed', message: 'Failed to generate JSON. Please adjust your prompt.', failed_generation: 'secret-provider-output' } }, { status: 400 });
+      assert.equal(body.response_format.type, 'json_object');
+      assert(!JSON.stringify(body).includes('secret-provider-output'));
+      return Response.json({ choices: [{ message: { content: JSON.stringify({ reply: 'Review your portion.', items: [{ ...item, grams: fallback === 'invalid' ? -180 : 180 }] }) }, finish_reason: 'stop' }] });
+    } });
+    if (fallback === 'valid') {
+      const result = await execute();
+      assert.equal(result.items[0].grams, 180);
+      assert.equal(result.items[0].food.per100.kcal, 250);
+    } else await assert.rejects(execute);
+    assert.equal(requests.length, 3, 'There is at most one recovery request');
+    assert(reports.every(d => d.category === 'json_validate_failed' && d.stage === 'proposal'));
+  }
+});
+test('proposal auth, quota, and unrelated request errors never trigger JSON recovery', async () => {
+  for (const status of [400, 401, 429, 500]) {
+    let calls = 0;
+    await assert.rejects(() => foodAssistant(basicRequest, { report() {}, fetcher: async () => {
+      if (++calls === 1) return Response.json({ choices: [{ message: { content: 'What size?' }, finish_reason: 'stop' }] });
+      return Response.json({ error: { code: status === 400 ? 'invalid_request_error' : 'json_validate_failed', message: 'Request failed' } }, { status });
+    } }));
+    assert.equal(calls, 2);
+  }
+});
 test('unknown provider errors expose only a fixed category, stage and status', async () => {
   const reports = [];
   await assert.rejects(() => foodAssistant(basicRequest, { report: d => reports.push(d), fetcher: async () => Response.json({ error: { code: 'private-key', message: 'private meal', failed_generation: 'private-key' } }, { status: 400 }) }), error => error.message === 'Groq rejected the food lookup (400 · request_failed). Your draft is safe.');

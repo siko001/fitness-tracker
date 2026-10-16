@@ -26,11 +26,12 @@ export async function assistantConfigured() {
 }
 export async function askAssistant(state: State, messages: ChatMessage[], draft: DraftItem[], webSearch: boolean, signal: AbortSignal) {
   if (!navigator.onLine) throw new Error('AI needs internet. Find a list in your saved foods and offline catalog instead.');
-  if (messages.length > 24) throw new Error('Start a new conversation to continue. Your saved foods will still be available.');
+  // Retain the full history locally; send recent turns plus the current meal draft.
+  const recentMessages = messages.slice(-24);
   const { url, token } = await destination();
   const response = await fetch(url, {
     method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    body: JSON.stringify({ messages, draft, foods: state.foods, recipes: state.recipes, webSearch, ...(sessionKey ? { apiKey: sessionKey } : {}) }),
+    body: JSON.stringify({ messages: recentMessages, draft, foods: state.foods, recipes: state.recipes, webSearch, ...(sessionKey ? { apiKey: sessionKey } : {}) }),
     signal: AbortSignal.any([signal, AbortSignal.timeout(115000)]),
   });
   const raw = await response.json();

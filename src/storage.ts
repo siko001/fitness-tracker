@@ -13,6 +13,12 @@ let connection: ReturnType<typeof dbPromise> | undefined;
 const db = () => connection ??= dbPromise();
 export async function readMetadata<T>(key: string): Promise<T | undefined> { return (await db()).get('app', key); }
 export async function writeMetadata(key: string, value: unknown) { return (await db()).put('app', value, key); }
+export async function mutateMetadata<T>(key: string, change: (previous: unknown) => T): Promise<T> {
+  const tx = (await db()).transaction('app', 'readwrite');
+  const next = change(await tx.store.get(key));
+  await tx.store.put(next, key); await tx.done;
+  return next;
+}
 export async function clearLocalData() {
   const database = await db(); await database.clear('app'); return loadState();
 }
