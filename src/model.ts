@@ -85,6 +85,13 @@ export function sumMacros(items: Macros[]): Macros {
   return items.reduce((total, item) => ({ kcal: total.kcal + item.kcal, protein: total.protein + item.protein, carbs: total.carbs + item.carbs, fat: total.fat + item.fat, fibre: total.fibre + item.fibre }), { ...zero });
 }
 export const entryMacros = (entry: Entry) => scale(entry.per100, entry.grams / 100);
+export function moveDiaryEntry(state: State, id: string, meal: Meal): State {
+  const entry = state.entries.find(e => e.id === id);
+  if (!entry) throw new Error('This entry was removed. Refresh your diary.');
+  if (entry.meal === meal) return state;
+  return { ...state, entries: state.entries.map(e => e.id === id ? { ...e, meal } : e),
+    skippedMeals: state.skippedMeals.filter(s => s.date !== entry.date || s.meal !== meal) };
+}
 export const recipeTotals = (recipe: Pick<Recipe, 'ingredients'>) => sumMacros(recipe.ingredients.map(i => scale(i.food.per100, i.grams / 100)));
 export const recipePer100 = (recipe: Recipe) => scale(recipeTotals(recipe), 100 / recipe.yieldGrams);
 export const dayTotals = (state: State, date: string) => sumMacros(state.entries.filter(e => e.date === date).map(entryMacros));

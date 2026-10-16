@@ -4,6 +4,7 @@ import { readMetadata } from './storage';
 import type { LocalConnection } from './local-sync';
 import { assistantResponseSchema, foodIdentity, resolvedItemSchema, type ChatMessage, type DraftItem, type ResolvedItem } from './assistant-schema';
 import { entrySchema, foodSchema, recipePer100, type Meal, type State } from './model';
+import { recipeFromAssistant, type AssistantRecipeOptions } from './assistant-recipes';
 
 // Optional session key stays in memory, never IndexedDB, localStorage or backups.
 let sessionKey = '';
@@ -41,8 +42,9 @@ export async function askAssistant(state: State, messages: ChatMessage[], draft:
 
 // One transaction saves library items AND their diary entries. Read the current
 // state again so another tab's changes cannot silently be replaced.
-export function applyAssistantItems(state: State, items: ResolvedItem[], entryIds: string[], log: { date: string; meal: Meal; time?: string } | null): State {
+export function applyAssistantItems(state: State, items: ResolvedItem[], entryIds: string[], log: { date: string; meal: Meal; time?: string } | null, recipeOptions?: AssistantRecipeOptions): State {
   const foods = [...state.foods], entries = [...state.entries];
+  const canonicalItems: ResolvedItem[] = [];
   items.forEach((raw, i) => {
     const row = resolvedItemSchema.parse(raw);
     let food = foodSchema.parse(row.food);
@@ -60,6 +62,7 @@ export function applyAssistantItems(state: State, items: ResolvedItem[], entryId
       } else if (row.existing) throw new Error(`${food.name} was removed. Look it up again.`);
       else foods.push(food);
     }
+    canonicalItems.push({ ...row, food });
     if (log) {
       if (!row.grams) throw new Error(`Choose the portion for ${food.name}.`);
       const entry = entrySchema.parse({ id: entryIds[i], ...log, name: food.brand && !food.name.toLowerCase().includes(food.brand.toLowerCase()) ? `${food.name} · ${food.brand}` : food.name,
@@ -69,5 +72,12 @@ export function applyAssistantItems(state: State, items: ResolvedItem[], entryId
       if (!entries.some(e => e.id === entry.id)) entries.push(entry);
     }
   });
-  return { ...state, foods, entries, skippedMeals: log ? state.skippedMeals.filter(x => x.date !== log.date || x.meal !== log.meal) : state.skippedMeals };
+  let recipes = state.recipes;
+  if (recipeOptions) {
+    const recipe = recipeFromAssistant(state, canonicalItems, recipeOptions);
+    const existing = recipes.find(r => r.id === recipe.id);
+    if (existing && JSON.stringify(existing) !== JSON.stringify(recipe)) throw new Error('This recipe was already saved. Edit it in Recipes instead of replacing it.');
+    if (!existing) recipes = [...recipes, recipe];
+  }
+  return { ...state, foods, recipes, entries, skippedMeals: log ? state.skippedMeals.filter(x => x.date !== log.date || x.meal !== log.meal) : state.skippedMeals };
 }

@@ -47,7 +47,7 @@ No new database tables, paid service or API key is needed. Vercel deploys `api/f
 
 ## Conversational food assistant
 
-Open **Food diary → Ask about food**. For example:
+Open **Ask Steady**, the floating button at the bottom right of any page, or **Food diary → Ask about food**. Both reopen the same saved conversation. For example:
 
 > I'm eating a tuna ftira from Panina in Malta.
 > It's about 300 g; an estimate is fine if there is no published nutrition.
@@ -55,7 +55,13 @@ Open **Food diary → Ask about food**. For example:
 
 The assistant can ask about size, ingredients and preparation, check saved foods/recipes, look up generic foods or packaged products, and optionally research a menu. A named restaurant is kept separate from a generic dish. Source nutrition is taken from the matched record, not replaced by model-generated numbers. New nutrition supplied by AI is always marked **Estimated**; menu ingredients alone do not verify calories.
 
-Review each proposed food's **Nutrition & source**, edit grams, choose the meal/date/time, tick the review box, then **Save & log meal**. New library foods and diary entries save together; existing matches are reused. Uncheck **Also log what I ate** to save only reusable library foods. Saving logs the proposed foods individually; it does not create a batch recipe. Use the existing recipe builder for cooked yield and servings. Conversations and unsent drafts are saved in this browser and restored when you reopen the dialog; **History** opens older chats. Chat history does not currently sync between devices.
+Review each proposed food's **Nutrition & source**, edit grams, choose the meal/date/time, tick the review box, then **Save & log meal**. New library foods and diary entries save together; existing matches are reused. Uncheck **Also log what I ate** to save without adding diary entries. Conversations, recipe choices and unsent drafts are saved in this browser and restored when you reopen the dialog; **History** opens older chats. Chat history does not currently sync between devices.
+
+Choose **Save as recipe** to keep the proposed foods together for next time. The name, weights, sources and nutrition are filled in; set the finished dish weight and number of servings. If ingredients were weighed raw, use the cooked batch weight. A whole-dish estimate remains one item, with its estimate flag and source; the app does not invent a recipe breakdown. With **Also log what I ate** selected, the current portions are logged once and the recipe is saved in the same transaction. Recipe servings determine future portions, not how much of the current proposal is logged.
+
+After logging, reopen that chat and choose **Save as recipe**, or use a diary entry's **⋯ → Save as recipe** to open the recipe editor with that entry filled in. This creates a reusable recipe without logging the food again. Recipes use the usual offline storage and device sync. Next time, open **Recipes → Log a portion** and choose grams or servings.
+
+To correct a meal category, drag a diary entry onto Breakfast, Lunch, Dinner or Snacks. On a phone or keyboard, use **⋯ → Move to…**. The move keeps the date, recorded time, portion and nutrition, and clears a skip on the destination meal. It saves offline and syncs like other diary changes.
 
 When you provide a portion, the assistant can prepare a labelled nutrition estimate for review if exact data is unavailable. It records ingredient assumptions and does not treat those as a confirmed restaurant recipe. An incomplete structured proposal is checked and retried once; chat text alone cannot create a food entry. If a preview is still incomplete, **Prepare meal preview** retries with a labelled estimate where needed. Nothing is logged until you review and save it.
 

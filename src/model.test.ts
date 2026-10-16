@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dateSchema, dayActivity, dayTotals, entryMacros, localDate, parseBackup, recipePer100, recipeTotals, shiftDate, type Entry, type Recipe } from './model';
+import { dateSchema, dayActivity, dayTotals, entryMacros, localDate, moveDiaryEntry, parseBackup, recipePer100, recipeTotals, shiftDate, type Entry, type Recipe } from './model';
 import { initialState, loadState, mutateState, clearLocalData } from './storage';
 import { mergeStates, SyncConflict } from './merge';
 
@@ -15,6 +15,17 @@ describe('nutrition and diary', () => {
   it('keeps food entry nutrition unchanged when its library food changes', () => {
     const state = initialState(); state.entries = [{ ...example(), foodId: state.foods[0].id }]; state.foods[0].per100.kcal = 900;
     expect(dayTotals(state, '2026-09-28').kcal).toBe(240); expect(dayTotals(state, '2026-09-27').kcal).toBe(0);
+  });
+  it('moving a meal preserves its ID, time, portion and calories and clears the destination skip', () => {
+    const state = initialState(), entry = { ...example(), time: '19:27' };
+    state.entries = [entry]; state.skippedMeals = [{ date: entry.date, meal: 'Dinner' }, { date: entry.date, meal: 'Breakfast' }];
+    const next = moveDiaryEntry(state, entry.id, 'Dinner');
+    expect(next.entries).toEqual([{ ...entry, meal: 'Dinner' }]);
+    expect(next.skippedMeals).toEqual([{ date: entry.date, meal: 'Breakfast' }]);
+    expect(dayTotals(next, entry.date)).toEqual(dayTotals(state, entry.date));
+    expect(state.entries[0].meal).toBe('Lunch');
+    expect(moveDiaryEntry(next, entry.id, 'Dinner')).toBe(next);
+    expect(() => moveDiaryEntry(state, 'removed', 'Dinner')).toThrow('removed');
   });
   it('manual activity replaces imported totals instead of double counting', () => {
     const state = initialState(); state.activities = [{ date: '2026-09-28', steps: 5000, activeKcal: 240, distanceKm: 4, source: 'health', updatedAt: new Date().toISOString() }, { date: '2026-09-28', steps: 5200, activeKcal: null, distanceKm: null, source: 'manual', updatedAt: new Date().toISOString() }];

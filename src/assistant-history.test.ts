@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, expect, test } from 'vitest';
-import { clearLocalData, readMetadata } from './storage';
+import { clearLocalData, readMetadata, writeMetadata } from './storage';
 import { newAssistantChat, readAssistantHistory, saveAssistantChat, selectAssistantChat } from './assistant-history';
 
 beforeEach(async () => { await clearLocalData(); });
@@ -22,4 +22,13 @@ test('independent concurrent chat saves preserve both histories and a new chat k
   await selectAssistantChat(null);
   expect((await readAssistantHistory()).activeId).toBe(null);
   expect((await readAssistantHistory()).chats).toHaveLength(2);
+});
+test('old chats load with recipe defaults and recipe choices survive reopening', async () => {
+  const { recipeDraft, ...oldChat } = { ...newAssistantChat('2026-10-16', 'Lunch', false), input: 'Tuna ftira' };
+  await writeMetadata('food-assistant-history-v1', { version: 1, activeId: oldChat.id, chats: [oldChat] });
+  const loaded = (await readAssistantHistory()).chats[0];
+  expect(loaded.recipeDraft).toEqual(recipeDraft);
+  loaded.recipeDraft = { enabled: true, name: 'Panina ftira', yieldGrams: '350', servings: '2' };
+  await saveAssistantChat(loaded);
+  expect((await readAssistantHistory()).chats[0].recipeDraft).toEqual(loaded.recipeDraft);
 });
