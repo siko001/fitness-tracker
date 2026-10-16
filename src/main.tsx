@@ -4,6 +4,7 @@ import App from './App';
 import './styles.css';
 import './safe-area.css';
 import './interface.css';
+import './insights.css';
 import './themes.css';
 import { applyAppearance, readAppearance } from './appearance';
 

@@ -3,7 +3,8 @@ import { App as NativeApp } from '@capacitor/app';
 import PwaStatus from './PwaStatus';
 import { onFoodReminder, refreshReminders, consumeAndroidReminder, clearPhoneReminders } from './reminders';
 import { LayoutDashboard, BookOpen, ChefHat, BarChart3, Footprints, Settings as SettingsIcon, Plus, WifiOff, Check, X, Leaf, Sparkles } from 'lucide-react';
-import Dashboard, { Diary, Progress, DateSwitcher, type DiaryActions } from './Dashboard';
+import Progress from './Progress';
+import Dashboard, { Diary, DateSwitcher, type DiaryActions } from './Dashboard';
 import { FoodLibrary, Recipes } from './Libraries';
 import Settings, { type SyncMode } from './Settings';
 import { ActivityForm, FoodForm, LogForm, RecipeForm, WeightForm } from './dialogs';
@@ -31,7 +32,7 @@ export default function App() {
   const appearance = useAppearance();
   const [state, setState] = useState<State | null>(null), [loadError, setLoadError] = useState('');
   const [page, setPage] = usePage(), [date, setDate] = useState(localDate());
-  const [dialog, setDialog] = useState<Dialog | null>(null), [toast, setToast] = useState(''), [period, setPeriod] = useState(30);
+  const [dialog, setDialog] = useState<Dialog | null>(null), [toast, setToast] = useState('');
   const [online, setOnline] = useState(navigator.onLine), [healthBusy, setHealthBusy] = useState(false);
   const [healthAuto, setHealthAuto] = useState(false), [healthStatus, setHealthStatus] = useState('');
   const healthRunning = useRef(false), healthChecked = useRef(0);
@@ -132,7 +133,7 @@ export default function App() {
         {page === 'Food diary' && <><div className="page-heading"><div><h1>Food diary</h1></div><div className="heading-actions"><button className="button secondary" onClick={() => setDialog({ type: 'assistant', meal: 'Lunch' })}>Ask about food</button><DateSwitcher date={date} onChange={setDate} /></div></div><Diary state={state} date={date} actions={actions} /></>}
         {page === 'Food library' && <FoodLibrary state={state} importFood={() => setDialog({ type: 'import' })} add={() => setDialog({ type: 'food' })} edit={food => setDialog({ type: 'food', food })} log={logFood} />}
         {page === 'Recipes' && <Recipes state={state} add={() => setDialog({ type: 'recipe' })} edit={recipe => setDialog({ type: 'recipe', recipe })} log={logRecipe} />}
-        {page === 'Progress' && <Progress state={displayState} date={date} period={period} setPeriod={setPeriod} logWeight={actions.weight} deleteWeight={d => setDialog({ type: 'delete', title: `Remove the weigh-in for ${d}?`, remove: s => ({ ...s, weights: s.weights.filter(w => w.date !== d) }) })} />}
+        {page === 'Progress' && <Progress state={displayState} settings={actions.settings} logWeight={actions.weight} deleteWeight={d => setDialog({ type: 'delete', title: `Remove the weigh-in for ${d}?`, remove: s => ({ ...s, weights: s.weights.filter(w => w.date !== d) }) })} />}
         {page === 'Activity' && <Activity state={displayState} healthState={state} zepp={zepp} date={date} setDate={setDate} busy={healthBusy} automatic={healthAuto} status={healthStatus} sync={() => void importHealth()} enterTotals={() => setDialog({ type: 'activity' })} disableAuto={() => void writeMetadata('healthAuto', false).then(() => { setHealthAuto(false); setHealthStatus('Automatic activity checks are off.'); })} />}
         {page === 'Settings' && <Settings appearance={appearance} state={state} saveProfile={profile => change(s => ({ ...s, profile }))} download={() => void download()} restore={f => void restore(f)} clear={() => setDialog({ type: 'clear' })} sync={() => void sync()} syncBusy={syncBusy} mode={mode} setMode={m => void setMode(m)} status={syncStatus} />}
         <footer className="page-footer"><Logo small /></footer>

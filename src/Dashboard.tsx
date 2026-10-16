@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import DiaryEntryRow from './DiaryEntryRow';
-import { ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, Flame, Footprints, Plus, Scale, Sunrise, Sun, Moon, Cookie, Pencil, Trash2, Watch, CalendarDays, Utensils } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, Flame, Footprints, Plus, Scale, Sunrise, Sun, Moon, Cookie, Watch, CalendarDays, Utensils } from 'lucide-react';
 import { dayActivity, dayTotals, dateLabel, daysEnding, entryMacros, fmt, localDate, meals, shiftDate, type Entry, type Meal, type State } from './model';
-import { Empty, LinkButton, MacroStrip, SectionHeading } from './ui';
+import { LinkButton, SectionHeading } from './ui';
 
 export type DiaryActions = { skip: (meal: Meal) => void; undoSkip: (meal: Meal) => void; add: (meal: Meal) => void; edit: (e: Entry) => void; remove: (e: Entry) => void; move: (e: Entry, meal: Meal) => void; weight: () => void; activity: () => void; settings: () => void; progress: () => void };
 export function DateSwitcher({ date, onChange }: { date: string; onChange: (d: string) => void }) {
@@ -46,21 +46,7 @@ export default function Dashboard({ state, date, setDate, actions }: { state: St
   </>;
 }
 
-export function Progress({ state, date, period, setPeriod, logWeight, deleteWeight }: { state: State; date: string; period: number; setPeriod: (n: number) => void; logWeight: () => void; deleteWeight: (date: string) => void }) {
-  const dates = daysEnding(date, period), logged = dates.filter(d => state.entries.some(e => e.date === d));
-  const totalKcal = dates.reduce((n, d) => n + dayTotals(state, d).kcal, 0);
-  const active = dates.map(d => dayActivity(state, d)).filter(a => a?.steps != null);
-  const weights = [...state.weights].filter(w => dates.includes(w.date)).sort((a, b) => a.date.localeCompare(b.date));
-  const maxKcal = Math.max(...dates.map(d => dayTotals(state, d).kcal), 500);
-  const latest = weights.at(-1), first = weights[0];
-  return <><div className="page-heading"><div><h1>Progress</h1></div><div className="segmented compact">{[7, 30, 90, 365].map(n => <button className={period === n ? 'selected' : ''} key={n} onClick={() => setPeriod(n)}>{n === 365 ? '1 year' : `${n} days`}</button>)}</div></div><div className="stats-row"><div className="card"><p>Average intake</p><strong>{logged.length ? fmt(totalKcal / logged.length) : '—'}<small> kcal</small></strong><span>Across {logged.length} logged days</span></div><div className="card"><p>Average steps</p><strong>{active.length ? fmt(active.reduce((n, a) => n + (a?.steps ?? 0), 0) / active.length) : '—'}</strong><span>Across {active.length} recorded days</span></div><div className="card"><p>Weight change</p><strong>{weights.length > 1 ? `${latest!.kg > first.kg ? '+' : ''}${fmt(latest!.kg - first.kg, 1)}` : '—'}<small> kg</small></strong><span>{weights.length > 1 ? `${dateLabel(first.date)} – ${dateLabel(latest!.date)}` : 'Add two weigh-ins to see a trend'}</span></div></div>
-    <section className="card"><SectionHeading title="Calories over time" aside={<span className="tag">{fmt(totalKcal)} kcal logged</span>} /><div className="long-chart" role="img" aria-label={`Calorie intake across ${period} days`}>
-      {dates.map(d => <div className="history-bar" key={d} title={`${dateLabel(d)}: ${fmt(dayTotals(state, d).kcal)} kcal`}><div style={{ height: `${Math.max(dayTotals(state, d).kcal / maxKcal * 100, 1)}%` }} className={state.entries.some(e => e.date === d) ? 'has-data' : ''} /></div>)}
-    </div><div className="chart-endpoints"><span>{dateLabel(dates[0])}</span><span>{dateLabel(date)}</span></div><p className="chart-caption">Averages exclude unlogged days.</p></section>
-    <section className="card weight-history"><SectionHeading title="Weight history" aside={<button className="button secondary small-button" onClick={logWeight}><Plus size={16} />Log weight</button>} />{weights.length ? <><WeightChart weights={weights} /> <div className="weight-list">{weights.slice().reverse().map(w => <div key={w.date}><span>{dateLabel(w.date, { day: 'numeric', month: 'short', year: 'numeric' })}</span><strong>{fmt(w.kg, 1)} kg</strong><button className="icon-button" aria-label={`Delete weight for ${w.date}`} onClick={() => deleteWeight(w.date)}><Trash2 size={15} /></button></div>)}</div></> : <Empty title="No weigh-ins yet" detail="Log your weight to see a trend." />}</section>
-    <section className="card"><SectionHeading title="Day-by-day detail" aside={<span className="tag">Last {period} days</span>} /><div className="table-scroll"><table><thead><tr><th>Date</th><th>Calories</th><th>Protein</th><th>Carbs</th><th>Fat</th><th>Steps</th><th>Active kcal*</th></tr></thead><tbody>{dates.slice().reverse().map(d => { const hasFood = state.entries.some(e => e.date === d), t = dayTotals(state, d), a = dayActivity(state, d); return <tr key={d}><td>{dateLabel(d, { day: 'numeric', month: 'short', year: 'numeric' })}</td><td>{hasFood ? fmt(t.kcal) : '—'}</td><td>{hasFood ? `${fmt(t.protein, 1)} g` : '—'}</td><td>{hasFood ? `${fmt(t.carbs, 1)} g` : '—'}</td><td>{hasFood ? `${fmt(t.fat, 1)} g` : '—'}</td><td>{a?.steps != null ? fmt(a.steps) : '—'}</td><td>{a?.activeKcal != null ? fmt(a.activeKcal) : '—'}</td></tr>; })}</tbody></table></div><p className="chart-caption">*Estimated activity energy. It does not include resting energy and is not subtracted from food intake.</p></section></>;
-}
-function WeightChart({ weights }: { weights: State['weights'] }) {
+export function WeightChart({ weights }: { weights: State['weights'] }) {
   if (weights.length < 2) return <p className="muted">Add a second weigh-in to see a trend.</p>;
   const min = Math.min(...weights.map(w => w.kg)) - 0.5, max = Math.max(...weights.map(w => w.kg)) + 0.5;
   const start = new Date(weights[0].date).getTime(), end = new Date(weights.at(-1)!.date).getTime();

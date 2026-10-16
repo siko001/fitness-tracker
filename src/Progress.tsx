@@ -1,0 +1,90 @@
+import { useMemo, useState, type ReactNode } from 'react';
+import { Activity, CheckCircle2, CircleHelp, Footprints, Plus, SlidersHorizontal, Trash2, TrendingUp, Utensils } from 'lucide-react';
+import { dateLabel, fmt, localDate, type State } from './model';
+import { buildReport, nutritionInsights, presetRange, rangeError, type RangePreset, type ReportDay, type Tone } from './insights';
+import { Empty, SectionHeading } from './ui';
+import { WeightChart } from './Dashboard';
+
+const dateText = (date: string) => dateLabel(date, { day: 'numeric', month: 'short', year: 'numeric' });
+const number = (value: number | null, digits = 0) => value == null ? '—' : fmt(value, digits);
+const signed = (value: number, digits = 0) => `${value > 0 ? '+' : ''}${fmt(value, digits)}`;
+
+function Comparison({ current, previous, unit, digits = 0 }: { current: number | null; previous: number | null; unit: string; digits?: number }) {
+  return <span className="insight-comparison">{current != null && previous != null ? `${signed(current - previous, digits)} ${unit} vs previous period` : 'No previous-period comparison yet'}</span>;
+}
+function Metric({ label, value, unit, children, icon }: { label: string; value: string; unit?: string; children: ReactNode; icon: ReactNode }) {
+  return <section className="card insight-metric"><div className="insight-metric-label">{icon}<h2>{label}</h2></div><div className="insight-value">{value}{unit && <small>{unit}</small>}</div>{children}</section>;
+}
+function Coverage({ label, count, total }: { label: string; count: number; total: number }) {
+  return <div className="insight-coverage-item"><span>{label}<b>{count} / {total}</b></span><progress value={count} max={total || 1} aria-label={`${label}: ${count} of ${total} days`} /></div>;
+}
+function Timeline({ days, metric, goal }: { days: ReportDay[]; metric: 'kcal' | 'steps'; goal: number | null }) {
+  const values = days.map(d => metric === 'kcal' ? d.entries.length ? d.totals.kcal : null : d.activity?.steps ?? null);
+  const max = Math.max(...values.map(v => v ?? 0), goal ?? 0, 1) * 1.12;
+  const label = metric === 'kcal' ? 'Food logged' : 'Steps';
+  return <div className={`insight-timeline ${metric}`}><div className="insight-chart-heading"><h3>{label}</h3><span>{goal ? `Target ${fmt(goal)}${metric === 'kcal' ? ' kcal' : ''}` : 'No target set'} · scale 0–{fmt(max)}</span></div><div className="insight-chart-scroll" tabIndex={0} aria-label={`${label} chart; daily values also in the table below`}><div className="insight-chart" style={{ minWidth: `${Math.max(days.length * 10, 200)}px` }}>
+    {goal && <div className="insight-target-line" style={{ bottom: `${goal / max * 100}%` }} />}
+    {days.map((day, i) => <div key={day.date} className={`insight-bar-slot ${values[i] == null ? 'missing' : ''}`} title={`${dateText(day.date)}: ${values[i] == null ? 'No data' : `${fmt(values[i])} ${metric}`}${metric === 'kcal' && day.entries.length && !day.checked ? ' · partial check-ins' : ''}`}><div className={metric === 'kcal' && !day.checked ? 'partial' : ''} style={{ height: `${values[i] == null ? 0 : Math.max(1, values[i] / max * 100)}%` }} /></div>)}
+  </div></div><div className="chart-endpoints"><span>{days[0] ? dateText(days[0].date) : 'No finished days'}</span><span>{days.at(-1) ? dateText(days.at(-1)!.date) : ''}</span></div></div>;
+}
+
+export default function Progress({ state, logWeight, deleteWeight, settings }: { state: State; logWeight: () => void; deleteWeight: (date: string) => void; settings: () => void }) {
+  const today = localDate();
+  const [preset, setPreset] = useState<RangePreset>('7');
+  const [month, setMonth] = useState(today.slice(0, 7));
+  const [custom, setCustom] = useState(() => presetRange('7', today));
+  const [foodSort, setFoodSort] = useState<'kcal' | 'fat'>('kcal');
+  const range = preset === 'custom' ? custom : presetRange(preset, today, month);
+  const noFinishedDays = (preset === 'week' || preset === 'month') && range.start > range.end;
+  const error = noFinishedDays ? null : rangeError(range, today);
+  const report = useMemo(() => error || noFinishedDays ? null : buildReport(state, range, today), [state, range.start, range.end, error, noFinishedDays, today]);
+  const s = report?.current, previous = report?.previous;
+  const choosePreset = (next: RangePreset) => { if (next === 'custom' && !error && !noFinishedDays) setCustom(range); setPreset(next); };
+  const options: [RangePreset, string][] = [['week', 'This week'], ['7', '1 week'], ['14', '2 weeks'], ['28', '4 weeks'], ['month', 'Month'], ['custom', 'Custom']];
+  const contributors = s?.contributors.toSorted((a, b) => b[foodSort] - a[foodSort]).slice(0, 5) ?? [];
+  const coveredAverage = s?.checkedAverage;
+  const calorieGoal = state.profile.calorieGoal, stepGoal = state.profile.stepGoal;
+  const fatTone: Tone = s?.foodConfidence && s.checkedDays === s.foodDays && !s.inconsistentNutrition && s.checkedFatShare != null ? s.checkedFatShare > 30 || s.checkedFatShare < 15 ? 'attention' : 'positive' : 'neutral';
+
+  return <div className="insights-page"><div className="page-heading"><div><h1>Progress & insights</h1><p>Your food, movement and patterns over time.</p></div><button className="button secondary small-button" onClick={settings}><SlidersHorizontal size={15} />Your targets</button></div>
+    <section className="insight-range" aria-label="Report date range"><div className="segmented" role="group" aria-label="Time range">{options.map(([key, label]) => <button key={key} className={preset === key ? 'selected' : ''} aria-pressed={preset === key} onClick={() => choosePreset(key)}>{label}</button>)}</div>
+      {preset === 'month' && <label>Month<input type="month" max={today.slice(0, 7)} value={month} onChange={e => setMonth(e.target.value)} /></label>}
+      {preset === 'custom' && <div className="insight-custom-range"><label>From<input type="date" max={today} value={custom.start} onChange={e => setCustom(r => ({ ...r, start: e.target.value }))} /></label><label>To<input type="date" max={today} value={custom.end} onChange={e => setCustom(r => ({ ...r, end: e.target.value }))} /></label></div>}
+      {!error && !noFinishedDays && <p>{dateText(range.start)} — {dateText(range.end)}<span>{range.end === today ? 'Today appears in the detail only.' : 'Finished days only · today excluded'}</span></p>}
+    </section>
+    {error && <p className="form-error" role="alert">{error}</p>}
+    {noFinishedDays && <section className="card"><Empty title="No finished days yet" detail="This period has just started. Choose 1 week to review recent days." action={<button className="button secondary" onClick={() => setPreset('7')}>View last week</button>} /></section>}
+    {report && s && previous && <>
+      <section className={`card insight-verdict ${report.verdict.tone}`} aria-label="Period review"><div className="insight-verdict-icon">{report.verdict.tone === 'positive' ? <CheckCircle2 size={26} /> : report.verdict.tone === 'attention' ? <TrendingUp size={26} /> : <CircleHelp size={26} />}</div><div><span className="insight-kicker">Your period in review</span><h2>{report.verdict.title}</h2><p>{report.verdict.detail}</p><small>Against your current targets · based on {s.checkedDays} food check-in days and {s.stepDays} step days</small></div></section>
+      <div className="insight-metrics">
+        <Metric label="Avg. food logged" value={number(s.average?.kcal ?? null)} unit="kcal / day" icon={<Utensils size={17} />}><p>{calorieGoal ? `Your target: ${fmt(calorieGoal)} kcal` : 'Set a calorie target to compare'} · {s.foodDays} logged days</p><Comparison current={s.average?.kcal ?? null} previous={previous.average?.kcal ?? null} unit="kcal/day" /></Metric>
+        <Metric label="Avg. steps" value={number(s.steps)} unit="steps / day" icon={<Footprints size={17} />}><p>{stepGoal ? `${s.stepGoalDays} of ${s.stepDays} days met ${fmt(stepGoal)} steps` : `${s.stepDays} recorded days · no target set`}</p><Comparison current={s.steps} previous={previous.steps} unit="steps/day" /></Metric>
+        <Metric label="Weight change" value={report.weightChange == null ? '—' : signed(report.weightChange, 1)} unit="kg" icon={<TrendingUp size={17} />}><p>{report.weights.length >= 2 ? `${dateText(report.weights[0].date)} → ${dateText(report.weights.at(-1)!.date)}` : 'Add at least two weigh-ins in this range'}</p><span className="insight-comparison">{report.weights.length} weigh-ins · short-term fluctuations count</span></Metric>
+      </div>
+      <div className="insight-two-column">
+        <section className="card"><SectionHeading title="Food & walking" aside={<Activity size={18} />} /><Timeline days={s.days} metric="kcal" goal={calorieGoal} /><Timeline days={s.days} metric="steps" goal={stepGoal} /><p className="insight-note">Separate scales · dotted line = your target · faint food bars = partial check-ins · gaps = no data</p>
+          <div className="insight-pairing"><strong>{calorieGoal && stepGoal && s.pairedDays ? `${s.higherFoodLowerSteps} of ${s.pairedDays} paired days` : 'Food and activity need shared days'}</strong><p>{calorieGoal && stepGoal && s.pairedDays ? 'had food above target and steps below target.' : 'Set both targets and complete meal check-ins on days with step records.'} This shows a pattern, not a calorie surplus.</p></div>
+        </section>
+        <section className="card insight-next"><SectionHeading title="What to focus on" />{nutritionInsights(s, state).map((tip, i) => <div className="insight-tip" key={tip.title}><span>{i + 1}</span><div><h3>{tip.title}</h3><p>{tip.detail}</p></div></div>)}<div className="insight-burn"><strong>Active energy: {number(s.activeKcal)} kcal / day</strong><p>{s.activeDays} recorded days. This excludes resting energy, so it cannot tell us your calorie deficit or surplus.</p><span>Distance: {number(s.distance, 1)} km / day · {s.distanceDays} recorded days</span></div></section>
+      </div>
+      <div className="insight-two-column">
+        <section className="card"><SectionHeading title="Nutrition breakdown" aside={<span className="tag">Per logged day</span>} /><div className="insight-nutrients">{(['protein', 'carbs', 'fat', 'fibre'] as const).map(k => <div key={k}><span>{k === 'carbs' ? 'Carbs' : k[0].toUpperCase() + k.slice(1)}</span><strong>{number(s.average?.[k] ?? null, 1)}<small> g</small></strong></div>)}</div>
+          <div className={`insight-nutrition-note ${fatTone}`}><strong>Fat: {number(s.inconsistentNutrition ? null : s.fatShare)}% of logged calories</strong><p>{s.inconsistentNutrition ? 'Check inconsistent food nutrition before using this comparison.' : 'General adult reference: 15–30% of energy. Fat type matters; saturated fat is not tracked.'}</p></div>
+          <div className="insight-nutrition-note"><strong>Fibre reference: at least 25 g / day</strong><p>Missing fibre values can look like zero. These are general references, not personalised prescriptions. <a href="https://www.who.int/news-room/fact-sheets/detail/healthy-diet" target="_blank" rel="noreferrer">WHO guidance ↗</a></p></div>
+          {coveredAverage && <p className="insight-note">Review uses {s.checkedDays} days with all main meals logged or skipped: {fmt(coveredAverage.kcal)} kcal, {number(s.inconsistentNutrition ? null : s.checkedFatShare)}% fat and {fmt(coveredAverage.fibre, 1)} g fibre per day.</p>}
+        </section>
+        <section className="card"><SectionHeading title="Where the intake came from" /><div className="segmented insight-food-sort" role="group" aria-label="Rank foods by"><button className={foodSort === 'kcal' ? 'selected' : ''} aria-pressed={foodSort === 'kcal'} onClick={() => setFoodSort('kcal')}>Calories</button><button className={foodSort === 'fat' ? 'selected' : ''} aria-pressed={foodSort === 'fat'} onClick={() => setFoodSort('fat')}>Fat</button></div>{contributors.length ? <ol className="insight-contributors">{contributors.map((food, i) => <li key={`${food.name}-${i}`}><div><strong>{food.name}</strong><span>{food.count} entries · {s.totals[foodSort] ? fmt(food[foodSort] / s.totals[foodSort] * 100) : 0}% of logged {foodSort === 'fat' ? 'fat' : 'calories'}</span></div><b>{fmt(food[foodSort], foodSort === 'fat' ? 1 : 0)}<small> {foodSort === 'fat' ? 'g' : 'kcal'}</small></b></li>)}</ol> : <p className="muted">Log some food to see your main contributors.</p>}<p className="insight-note">Top 5 across this period. A contributor is not automatically an unhealthy food.</p></section>
+      </div>
+      <section className="card insight-data"><SectionHeading title="How much of the picture do we have?" aside={<span className="tag">{s.days.length} finished days</span>} /><div className="insight-coverage"><Coverage label="Food logged" count={s.foodDays} total={s.days.length} /><Coverage label="All meal check-ins" count={s.checkedDays} total={s.days.length} /><Coverage label="Steps recorded" count={s.stepDays} total={s.days.length} /></div><p className="insight-note">All meal check-ins means breakfast, lunch and dinner logged or explicitly skipped. It does not guarantee every snack or portion was recorded. {s.estimatedEntries} of {s.entryCount} entries are marked as estimated.</p>
+        {calorieGoal && s.checkedDays > 0 && <div className="insight-target-days"><span><b>{s.calorieDays.near}</b> days near calorie target</span><span><b>{s.calorieDays.above}</b> above</span><span><b>{s.calorieDays.below}</b> below</span><small>Checked-in days · “near” = within 10%</small></div>}
+        {s.days.length > 0 && <p className="insight-note">Previous period: {dateText(report.previousRange.start)} — {dateText(report.previousRange.end)} · {previous.foodDays} food days / {previous.stepDays} step days. Different coverage can affect the comparison.</p>}
+      </section>
+      <div className="insight-two-column">
+        <section className="card"><SectionHeading title="Eating patterns" aside={<span className="tag">Recorded times</span>} /><div className="insight-meal-times">{s.mealTimes.map(m => <div key={m.meal}><strong>{m.meal}</strong><span>{m.first ? m.first === m.last ? m.first : `${m.first} – ${m.last}` : 'No times logged'}</span></div>)}</div><p className="insight-note">Earliest to latest recorded time · {s.timedEntries} of {s.entryCount} entries have a time. These describe your habits, not a required meal schedule.</p><p className="insight-snacks">Snacks: <strong>{s.snackEntries} entries</strong> · {number(s.snackShare)}% of logged calories</p></section>
+        <section className="card weight-history"><SectionHeading title="Weight history" aside={<button className="button secondary small-button" onClick={logWeight}><Plus size={15} />Log weight</button>} />{report.weights.length ? <><WeightChart weights={report.weights} /><div className="weight-list insight-weight-list">{report.weights.toReversed().map(w => <div key={w.date}><span>{dateText(w.date)}</span><strong>{fmt(w.kg, 1)} kg</strong><button className="icon-button" aria-label={`Delete weight for ${w.date}`} onClick={() => deleteWeight(w.date)}><Trash2 size={15} /></button></div>)}</div><p className="insight-note">First-to-last change is not a measure of body-fat change. Look across several weeks.</p></> : <Empty title="No weigh-ins in this range" detail="Add a weigh-in to start your weight history." />}</section>
+      </div>
+      <section className="card"><SectionHeading title="Day-by-day detail" /><div className="table-scroll insight-detail" tabIndex={0} aria-label="Daily nutrition and movement"><table><thead><tr><th>Date</th><th>Diary</th><th>Calories</th><th>Protein</th><th>Carbs</th><th>Fat</th><th>Fibre</th><th>Steps</th><th>Active kcal</th></tr></thead><tbody>{report.daily.toReversed().map(d => <tr key={d.date}><td>{dateText(d.date)}{d.date === today && <small> · in progress</small>}</td><td>{d.entries.length ? d.checked ? 'Meals checked in' : 'Partial check-ins' : 'No food logged'}</td>{(['kcal', 'protein', 'carbs', 'fat', 'fibre'] as const).map(k => <td key={k}>{d.entries.length ? `${fmt(d.totals[k], k === 'kcal' ? 0 : 1)}${k === 'kcal' ? '' : ' g'}` : '—'}</td>)}<td>{number(d.activity?.steps ?? null)}</td><td>{number(d.activity?.activeKcal ?? null)}</td></tr>)}</tbody></table></div></section>
+      <details className="card insight-method"><summary>How this review works & sources</summary><div><p>Calculated on this device from your saved food snapshots, weight and daily activity; no AI key is needed. Today and future days never affect assessments. Missing days are excluded from averages; an explicitly recorded zero counts. Manual activity replaces imported totals for that day.</p><p>A period review needs at least 3 days and 70% coverage for both meal check-ins and steps. This is an app confidence rule, not a medical threshold. Nutrition judgments use only days with all main meal check-ins; the headline averages show all logged days. Incomplete portions or nutrition data can still skew either.</p><p>Current targets apply to the whole range, including previous periods. “Near” your calorie target means within ±10%, an app comparison band. The dashboard does not decide whether that target suits your individual needs. Fat share is fat grams × 9 ÷ recorded calories; protein and carbs are descriptive, without personalised targets.</p><p><a href="https://www.who.int/news-room/fact-sheets/detail/healthy-diet" target="_blank" rel="noreferrer">WHO healthy diet</a> provides the adult fat and fibre references. Total fat does not measure fat quality. <a href="https://www.who.int/news-room/fact-sheets/detail/physical-activity" target="_blank" rel="noreferrer">WHO physical activity guidance</a> uses exercise duration and intensity; steps alone cannot assess it. Exercise minutes, resting energy and total daily energy expenditure are not recorded here.</p><p>Food minus watch active calories is not your energy balance. No deficit, surplus or expected weight loss is calculated. Food estimates, incomplete logs and delayed watch exports all affect this review.</p></div></details>
+    </>}
+  </div>;
+}

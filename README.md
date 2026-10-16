@@ -11,7 +11,7 @@ A personal food and fitness diary for desktop, Android and iPhone. Food logging,
 - Search 12,662 general foods/dishes and online packaged products, preview the source and nutrition, then review/edit before importing. Optional serving weights make slices and sandwiches reusable. [Food import and quick recipe guide](docs/food-import.md).
 - Record an optional eating time for every food entry.
 - Build recipes from ingredients (or paste a list and review all matches at once), specify the finished dish weight and number of servings, then log grams or portions. Past diary entries retain their original nutrition when a recipe changes.
-- Daily diary, calorie/macro totals, weight tracking and 7/30/90/365-day progress views.
+- Daily diary, calorie/macro totals and weight tracking. **Progress & insights** reviews this week, the last 1/2/4 weeks, calendar months, or a custom range up to 366 days. It includes target comparisons, food/step charts, fat and fibre context, food contributors, eating times, weight history and logging coverage. It works offline without an AI key.
 - Native phone integration reads steps, active energy and walking/running distance from Health Connect / Apple Health. Connect once; checks run on opening, returning to the app and every 30 seconds while open.
 - Optional Android background health imports and activity sync about every 15 minutes, including after reboot, with one-time background Health Connect permission. Android may defer work to save battery. No Firebase or new Supabase tables are needed.
 - Optional **phone notifications** at 10:00, 14:00 and 21:00, repeating every 20 minutes until you log or skip that meal for the day. Android uses a rolling native alarm that works offline while closed. Times and the overnight cutoff are editable. An alternative daily check-in is available.
@@ -19,6 +19,12 @@ A personal food and fitness diary for desktop, Android and iPhone. Food logging,
 - Three-way sync combines independent changes and asks you to resolve conflicting edits. Export/restore JSON backups.
 
 No ads, analytics, paid food database or subscription is built into the project. Calorie targets are optional and are not prescribed by the app. Watch activity calories are estimates and do not automatically increase your food allowance.
+
+## Progress reviews
+
+The report excludes today from assessments and compares the same number of finished days immediately before the selected range. Missing days are not zero. Headline averages use all logged days; nutrition judgments use days with breakfast, lunch and dinner logged or explicitly skipped. Those check-ins do not guarantee every portion or snack was logged. A whole-period review requires at least 3 days and 70% coverage for both meal check-ins and steps; this is an app confidence heuristic, not a medical rule.
+
+Calorie comparisons use the current user-set goal with a ±10% display band. General adult fat (15–30% of energy) and fibre (at least 25 g/day) references link to [WHO healthy diet guidance](https://www.who.int/news-room/fact-sheets/detail/healthy-diet). Fat quality and missing nutrient values limit these comparisons. The app does not estimate total energy expenditure, subtract active calories from food, prescribe intake, or infer exercise intensity from steps.
 
 ## How the devices fit together
 
