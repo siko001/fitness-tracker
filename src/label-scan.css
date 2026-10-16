@@ -1,6 +1,6 @@
 .scan-modal{width:min(760px,96vw)}
 .label-scan fieldset{border:0;padding:0;margin:0;min-width:0;display:grid;gap:18px}
-.label-scan .form-grid{margin:0}
+.label-scan .form-grid{margin:0;row-gap:16px}
 .label-scan h3{margin:8px 0 0;font-size:15px}
 .scan-capture-actions,.scan-topline,.scan-normalised,.log-shortcuts{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .scan-topline{justify-content:space-between;color:var(--muted);font-size:12px;margin-bottom:18px}

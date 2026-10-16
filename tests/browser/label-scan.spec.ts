@@ -82,6 +82,7 @@ test('mobile scanner has stationary header/footer, readable values and no overfl
   await expect(page.getByRole('button', { name: 'Save & log drink' })).toBeInViewport();
   await page.setViewportSize({ width: 1440, height: 1080 }); await page.emulateMedia({ colorScheme: 'light' });
   await page.locator('.modal-body').evaluate(el => el.scrollTop = 0);
+  await expect.poll(() => page.getByRole('button', { name: 'Close', exact: true }).evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(255, 255, 255)');
   await page.screenshot({ path: 'test-results/label-scan-desktop-light.png' });
 });
 test('scan errors retain photos and never save or create entries', async ({ page }) => {
